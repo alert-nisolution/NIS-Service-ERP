@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getQuotations, saveQuotations, getSalesOrders, addSalesOrder } from '../mockDb';
+import { getQuotations, saveQuotations, getSalesOrders, addSalesOrder, getSystemConfig } from '../mockDb';
 
 const preQuotations = [
   { id:'PRE-2023-089', customer:'Global Finance Group', type:'MA Renewal — MA-Network', poRef:'PO-2022-054 / MA-NET-22-005', dueDate:'30 ต.ค. 2566', dueIn:12, value:360000 },
@@ -14,6 +14,9 @@ function fmt(n) { return '฿' + n.toLocaleString(); }
 
 export default function Quotations() {
   const navigate = useNavigate();
+  const config = getSystemConfig();
+  const jobTypes = config.jobTypes || [];
+
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -219,9 +222,7 @@ export default function Quotations() {
           {tab === 'all' && (
             <select style={{width:180}} value={filterType} onChange={e => setFilterType(e.target.value)}>
               <option value="">ทุกประเภทงาน</option>
-              <option>Runrate</option><option>Implement</option>
-              <option>MA-Device</option><option>MA-Fortigate</option>
-              <option>MA-Software</option><option>MA-Network</option>
+              {jobTypes.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           )}
           {tab === 'pre' && (

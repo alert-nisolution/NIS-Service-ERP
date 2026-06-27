@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getQuotations, saveQuotations, addQuotation, getSalesOrders, addSalesOrder } from '../mockDb';
+import { getQuotations, saveQuotations, addQuotation, getSalesOrders, addSalesOrder, getSystemConfig } from '../mockDb';
 
 const initItems = [
   { id: 1, name: 'FortiGate 100F Next-Gen Firewall', sku: 'FG-100F', qty: 1, price: 185000, warranty: '3 ปี (Vendor)', type: 'Hardware' },
@@ -11,13 +11,15 @@ const initItems = [
   { id: 6, name: 'Annual Maintenance (MA-Fortigate)', sku: 'SVC-MA-FG', qty: 1, price: 85000, warranty: '1 ปี (Service)', type: 'MA Service' },
 ];
 
-const jobTypes = ['Runrate', 'Implement', 'MA-Device', 'MA-Fortigate', 'MA-Software', 'MA-Network'];
-const slaOptions = ['8x5xNBD', '8x5', '24x7x4', '24x7xNBD'];
 const pmOptions = ['4 ครั้ง/ปี (ทุก 3 เดือน)', '12 ครั้ง/ปี (ทุกเดือน)', '2 ครั้ง/ปี (ทุก 6 เดือน)', '6 ครั้ง/ปี (ทุก 2 เดือน)'];
 
 export default function QuotationDetail({ mode }) {
   const navigate = useNavigate();
   const { id } = useParams();
+
+  const config = getSystemConfig();
+  const jobTypes = config.jobTypes || [];
+  const slaOptions = config.slaOptions || [];
 
   const isView = mode === 'view';
   const qId = id || 'QT-2023-NEW';

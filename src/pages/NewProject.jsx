@@ -1,23 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { addProject, getSalesOrders, saveSalesOrders, getQuotations } from '../mockDb';
+import { addProject, getSalesOrders, saveSalesOrders, getQuotations, getSystemConfig } from '../mockDb';
 
 const steps = ['ข้อมูลโครงการ','ประเภทงาน & เงื่อนไข','Checklist & เอกสาร','ยืนยัน & Auto Ticket'];
-
-const implementChecklists = [
-  'ตรวจสอบรายการสินค้า / อุปกรณ์ครบถ้วน','ดำเนินการ PreConfig อุปกรณ์ก่อนออกงาน',
-  'ติดตั้ง Rack / ขึ้นแร็ค','เดินสาย Fiber / UTP','Config Network Address / VLAN',
-  'Config ระบบ Firewall Policy','ทดสอบการเชื่อมต่อ Internet / WAN',
-  'ทดสอบ Internal Network','จัดทำ Network Diagram ตาม AS-BUILT',
-  'บันทึก IP / User / Password เข้าระบบ','ส่งมอบงานและให้ลูกค้าเซ็นรับ',
-];
-const maChecklists = [
-  'ตรวจสอบ Log / Event ย้อนหลัง','ตรวจสอบ CPU / Memory / Disk Usage',
-  'Update Firmware / Signature ล่าสุด','ตรวจสอบ HA Cluster / Failover',
-  'Remote Backup Config','ทดสอบ Failover System','บันทึกผลการตรวจสอบลง Monthly Report',
-];
-
-const allTags = ['Firewall','Network','WiFi','Server','CCTV','Access Control','PC&Notebook','Software','Cable','Windows Server','VMware'];
 
 export default function NewProject() {
   const navigate = useNavigate();
@@ -77,8 +62,26 @@ export default function NewProject() {
     deliveryType: 'onsite_install', deliveryBy: 'nis_team',
   });
 
+  const config = getSystemConfig();
+  const allTags = config.tags || [];
+  const jobTypes = config.jobTypes || [];
+
   // Checklist
-  const [checklist, setChecklist] = useState(implementChecklists.slice());
+  const [checklist, setChecklist] = useState(() => config.implementChecklist || []);
+
+  useEffect(() => {
+    const sysConfig = getSystemConfig();
+    if (form.jobCategory === 'Implement' || form.jobCategory === 'Runrate') {
+      setChecklist(sysConfig.implementChecklist || []);
+    } else if (form.jobCategory.startsWith('MA')) {
+      setChecklist(sysConfig.maChecklist || []);
+    } else if (form.jobCategory === 'PM') {
+      setChecklist(sysConfig.pmChecklist || []);
+    } else {
+      setChecklist(sysConfig.implementChecklist || []);
+    }
+  }, [form.jobCategory]);
+
   const [selectedTags, setSelectedTags] = useState(() => {
     if (soRefParam) {
       const orders = getSalesOrders();
@@ -322,7 +325,7 @@ export default function NewProject() {
               <div>
                 <label>กลุ่มงาน (Job Category)</label>
                 <select value={form.jobCategory} onChange={e=>setForm({...form,jobCategory:e.target.value,jobType:e.target.value})}>
-                  {['Runrate','Implement','MA-Device','MA-Fortigate','MA-Software','MA-Network'].map(t=><option key={t}>{t}</option>)}
+                  {jobTypes.map(t=><option key={t}>{t}</option>)}
                 </select>
               </div>
             </div>

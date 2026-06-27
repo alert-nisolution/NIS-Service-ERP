@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getSystemConfig, saveSystemConfig } from '../mockDb';
 
 const Section = ({ title, children }) => (
   <div className="card" style={{marginBottom:20}}>
@@ -59,45 +60,17 @@ export default function SystemConfig() {
   const [activeTab, setActiveTab] = useState('jobtypes');
   const [saved, setSaved] = useState(false);
 
-  const [jobTypes, setJobTypes] = useState(['Runrate','Implement','MA-Device','MA-Fortigate','MA-Software','MA-Network']);
-  const [tags, setTags] = useState(['Firewall','Network','WiFi','Server','CCTV','Access Control','PC&Notebook','Peripheral','Software','Cable','Windows Server','VMware','HyperV']);
-  const [slaOptions, setSlaOptions] = useState(['8x5xNBD','8x5','24x7x4','24x7xNBD']);
+  const config = getSystemConfig();
 
-  const [implementChecklist, setImplementChecklist] = useState([
-    'ตรวจสอบรายการสินค้า / อุปกรณ์ครบถ้วน',
-    'ดำเนินการ PreConfig อุปกรณ์ก่อนออกงาน',
-    'ติดตั้ง Rack / ขึ้นแร็ค',
-    'เดินสาย Fiber / UTP',
-    'Config Network Address / VLAN',
-    'Config ระบบ Firewall Policy',
-    'ทดสอบการเชื่อมต่อ Internet / WAN',
-    'ทดสอบ Internal Network',
-    'จัดทำ Network Diagram ตาม AS-BUILT',
-    'บันทึก IP / User / Password เข้าระบบ',
-    'ส่งมอบงานและให้ลูกค้าเซ็นรับ',
-  ]);
+  const [jobTypes, setJobTypes] = useState(() => config.jobTypes);
+  const [tags, setTags] = useState(() => config.tags);
+  const [slaOptions, setSlaOptions] = useState(() => config.slaOptions);
 
-  const [maChecklist, setMaChecklist] = useState([
-    'ตรวจสอบ Log / Event ย้อนหลัง',
-    'ตรวจสอบ CPU / Memory / Disk Usage',
-    'Update Firmware / Signature ล่าสุด',
-    'ตรวจสอบ HA Cluster / Failover',
-    'Remote Backup Config',
-    'ทดสอบ Failover System',
-    'บันทึกผลการตรวจสอบลง Monthly Report',
-  ]);
+  const [implementChecklist, setImplementChecklist] = useState(() => config.implementChecklist);
+  const [maChecklist, setMaChecklist] = useState(() => config.maChecklist);
+  const [pmChecklist, setPmChecklist] = useState(() => config.pmChecklist);
+  const [warningDays, setWarningDays] = useState(() => config.warningDays);
 
-  const [pmChecklist, setPmChecklist] = useState([
-    'ทำความสะอาดอุปกรณ์ใน Rack',
-    'ตรวจสอบสถานะ LED / Fan',
-    'ตรวจสอบ Cable / Fiber Connection',
-    'ตรวจสอบ Power Supply / UPS',
-    'ตรวจสอบอุณหภูมิห้อง Server Room',
-    'ทดสอบ Backup / Restore',
-    'จัดทำ PM Report',
-  ]);
-
-  const [warningDays, setWarningDays] = useState({ service: 60, product: 30 });
   const [emailTemplates] = useState([
     {id:'e1', name:'ส่งใบเสนอราคา', subject:'ใบเสนอราคา [QT_NUMBER] - [COMPANY]'},
     {id:'e2', name:'Service Report (หลังปิดงาน)', subject:'Service Report - Ticket [TK_NUMBER] - [PROJECT]'},
@@ -105,7 +78,20 @@ export default function SystemConfig() {
     {id:'e4', name:'ลูกค้าเซ็นรับงาน', subject:'ยืนยันการรับงาน - Project [PROJECT] - [COMPANY]'},
   ]);
 
-  const handleSave = () => { setSaved(true); setTimeout(()=>setSaved(false),2500); };
+  const handleSave = () => {
+    saveSystemConfig({
+      jobTypes,
+      tags,
+      implementChecklist,
+      maChecklist,
+      pmChecklist,
+      slaOptions,
+      warningDays
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+    window.dispatchEvent(new CustomEvent('system-config-updated'));
+  };
 
   const tabs = [
     {id:'jobtypes', label:'ประเภทงาน'},

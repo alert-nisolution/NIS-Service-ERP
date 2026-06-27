@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getProjects, saveProjects } from '../mockDb';
+import { getProjects, saveProjects, getChecklistByType } from '../mockDb';
 
 const pColors = {High:'#ef4444',Medium:'#f59e0b',Low:'#10b981'};
 const sColors = {'In Progress':'badge-sent','Active':'badge-approved','Done':'badge-approved','Open':'badge-draft','Pending':'badge-warning','Closed':'badge-approved'};
@@ -34,6 +34,9 @@ export default function Projects() {
   const [tkAssignee, setTkAssignee] = useState('-');
   const [tkPriority, setTkPriority] = useState('Medium');
   const [tkDue, setTkDue] = useState(() => new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
+  const [tkChecklist, setTkChecklist] = useState([]);
+  const [tkChecklistInput, setTkChecklistInput] = useState('');
+  const [tkSkipSignature, setTkSkipSignature] = useState(false);
 
   // Assign Ticket Modal states
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -48,12 +51,22 @@ export default function Projects() {
     }
   }, [prjIdParam, projectsList]);
 
+  // Load default checklist on ticket type change
+  useEffect(() => {
+    if (showAddTicketModal) {
+      setTkChecklist(getChecklistByType(tkType));
+    }
+  }, [tkType, showAddTicketModal]);
+
   const handleOpenAddTicket = () => {
     setTkTitle('');
     setTkType('Install');
     setTkAssignee('-');
     setTkPriority('Medium');
     setTkDue(new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
+    setTkChecklist(getChecklistByType('Install'));
+    setTkChecklistInput('');
+    setTkSkipSignature(false);
     setShowAddTicketModal(true);
   };
 
@@ -74,7 +87,9 @@ export default function Projects() {
       pct: 0,
       type: tkType,
       priority: tkPriority,
-      tags: [tkType]
+      tags: [tkType],
+      checklist: tkChecklist.map(item => ({ label: item, done: false })),
+      skipSignature: tkSkipSignature
     };
 
     const updatedList = projectsList.map(p => {
@@ -153,7 +168,7 @@ export default function Projects() {
       {/* Add Ticket Modal */}
       {showAddTicketModal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'var(--surface)',borderRadius:16,padding:28,width:480,boxShadow:'var(--shadow-lg)'}}>
+          <div style={{background:'var(--surface)',borderRadius:16,padding:28,width:560,boxShadow:'var(--shadow-lg)'}}>
             <div style={{fontWeight:800,fontSize:18,marginBottom:14,color:'var(--text)'}}>สร้าง Ticket ใหม่ในโครงการ</div>
             
             <div style={{marginBottom:12}}>
@@ -183,7 +198,7 @@ export default function Projects() {
               </div>
             </div>
 
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
               <div>
                 <label>ผู้รับมอบหมาย (Staff)</label>
                 <select value={tkAssignee} onChange={e=>setTkAssignee(e.target.value)} style={{marginTop:6}}>
@@ -195,6 +210,95 @@ export default function Projects() {
                 <label>กำหนดส่ง (Due Date)</label>
                 <input type="date" value={tkDue} onChange={e=>setTkDue(e.target.value)} style={{marginTop:6}} />
               </div>
+            </div>
+
+            {/* Checklist Section */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Checklist รายละเอียดงาน ({tkChecklist.length} รายการ)</label>
+              <div style={{
+                maxHeight: 120,
+                overflowY: 'auto',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '8px 12px',
+                background: 'var(--bg)',
+                marginTop: 6,
+                marginBottom: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6
+              }}>
+                {tkChecklist.length === 0 ? (
+                  <div style={{ fontSize: 11.5, color: 'var(--text-light)', fontStyle: 'italic', padding: '4px 0' }}>
+                    ยังไม่มีรายการ Checklist...
+                  </div>
+                ) : (
+                  tkChecklist.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>
+                        {idx + 1}. {item}
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => setTkChecklist(tkChecklist.filter((_, i) => i !== idx))}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                          padding: '2px 6px',
+                          fontSize: 12,
+                          fontWeight: 700
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input 
+                  value={tkChecklistInput} 
+                  onChange={e => setTkChecklistInput(e.target.value)} 
+                  placeholder="พิมพ์ Checklist แล้วกด Enter หรือคลิกเพิ่ม..." 
+                  style={{ flex: 1, fontSize: 12 }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && tkChecklistInput.trim()) {
+                      e.preventDefault();
+                      setTkChecklist([...tkChecklist, tkChecklistInput.trim()]);
+                      setTkChecklistInput('');
+                    }
+                  }}
+                />
+                <button 
+                  type="button"
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    if (tkChecklistInput.trim()) {
+                      setTkChecklist([...tkChecklist, tkChecklistInput.trim()]);
+                      setTkChecklistInput('');
+                    }
+                  }}
+                  style={{ padding: '6px 12px', fontSize: 12, flexShrink: 0 }}
+                >
+                  + เพิ่มข้อ
+                </button>
+              </div>
+            </div>
+
+            {/* Skip Signature Switch */}
+            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input 
+                type="checkbox" 
+                id="create_skip_sig"
+                checked={tkSkipSignature} 
+                onChange={e => setTkSkipSignature(e.target.checked)} 
+                style={{ width: 'auto', cursor: 'pointer' }} 
+              />
+              <label htmlFor="create_skip_sig" style={{ fontSize: 13, fontWeight: 700, cursor: 'pointer', margin: 0, color: 'var(--text)' }}>
+                งานนี้ไม่ต้องใช้ลายเซ็นลูกค้าตอนส่งงาน (Skip Signature)
+              </label>
             </div>
 
             <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
@@ -210,7 +314,7 @@ export default function Projects() {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--surface)',borderRadius:16,padding:28,width:400,boxShadow:'var(--shadow-lg)'}}>
             <div style={{fontWeight:800,fontSize:18,marginBottom:4,color:'var(--text)'}}>มอบหมายงาน (Assign Ticket)</div>
-            <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20}}>เลือกช่างเทคนิค/วิศวกรผู้รับผิดชอบสำหรับตั๋ว {selectedTicketId}</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20}}>เลือกเจ้าหน้าที่เทคนิคผู้รับผิดชอบสำหรับตั๋ว {selectedTicketId}</div>
             
             <div style={{marginBottom:20}}>
               <label>เลือกช่าง (Staff)</label>

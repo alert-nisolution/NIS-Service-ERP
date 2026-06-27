@@ -94,7 +94,7 @@ export default function ServiceTeam() {
       <div className="page-header">
         <div>
           <div className="page-title">Service Team Matrix — โครงสร้างทีมบริการ</div>
-          <div className="page-subtitle">จัดการวิศวกรระบบ ตรวจสอบภาระงาน และการกระจายงานสำหรับ Staff (คลิกที่พนักงานเพื่อดูรายละเอียดงาน)</div>
+          <div className="page-subtitle">จัดการเจ้าหน้าที่เทคนิค ตรวจสอบภาระงาน และการกระจายงานสำหรับ Staff (คลิกที่พนักงานเพื่อดูรายละเอียดงาน)</div>
         </div>
       </div>
 
@@ -230,13 +230,13 @@ export default function ServiceTeam() {
       {/* Staff Grid Matrix Detail */}
       <div className="card">
         <div className="card-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <div className="card-title">ข้อมูลวิศวกรและประสิทธิภาพปฏิบัติงาน (Staff Workload Matrix)</div>
+          <div className="card-title">ข้อมูลเจ้าหน้าที่เทคนิคและประสิทธิภาพปฏิบัติงาน (Staff Workload Matrix)</div>
         </div>
         <div className="table-wrapper">
           <table>
             <thead>
               <tr>
-                <th>วิศวกร (Staff)</th>
+                <th>เจ้าหน้าที่เทคนิค (Staff)</th>
                 <th>ทักษะความชำนาญ (Skills)</th>
                 <th>สถานะการทำงาน (Onsite Status)</th>
                 <th style={{ textAlign: 'center' }}>จำนวนตั๋วถือครอง</th>

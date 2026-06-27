@@ -151,7 +151,7 @@ function PdfPreviewModal({ onClose, data, onOpenEmail }) {
                 <div style={pdfVal}>{data.contactName} | {data.contactPhone}</div>
               </div>
               <div style={{ ...pdfInfoBox }}>
-                <div style={pdfLabel}>วิศวกร</div>
+                <div style={pdfLabel}>เจ้าหน้าที่เทคนิค</div>
                 <div style={pdfVal}>{data.engineerName} ({data.engineerNick})</div>
                 <div style={pdfLabel}>Check-in</div>
                 <div style={pdfVal}>{data.checkIn}</div>
@@ -231,7 +231,16 @@ function PdfPreviewModal({ onClose, data, onOpenEmail }) {
                     ผู้รับมอบงาน: {data.contactName}
                   </div>
                 </div>
-              ) : <div style={{ fontSize: 10.5, color: '#94a3b8' }}>(ยังไม่ได้ลงลายเซ็น)</div>}
+              ) : (
+                data.skipSignature ? (
+                  <div style={{ border: '1.5px dashed #cbd5e1', borderRadius: 8, padding: '10px 14px', background: '#f8fafc', maxWidth: 220, fontSize: 11.5, color: '#64748b', fontWeight: 600, fontFamily: 'Prompt, sans-serif' }}>
+                    💡 ได้รับการยกเว้นลายเซ็น<br />
+                    <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 500 }}>(งานรีโมท / ตรวจสอบระบบ)</span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 10.5, color: '#94a3b8' }}>(ยังไม่ได้ลงลายเซ็น)</div>
+                )
+              )}
             </div>
 
           </div>
@@ -336,7 +345,7 @@ export default function IpadOnsiteTest() {
 
   /* ── Derived: All active tickets ── */
   const allTickets = projectsList.flatMap(p =>
-    (p.tickets || []).map(t => ({ ...t, projectId: p.id, projectName: p.name, customer: p.customer, location: p.location || '', contact: p.contact || {}, salesPM: p.salesPM || {}, engineer: p.engineer || {}, projectType: p.type, tags: p.tags || [] }))
+    (p.tickets || []).map(t => ({ ...t, projectId: p.id, projectName: p.name, customer: p.customer, location: t.location || p.location || '', contact: p.contact || {}, salesPM: p.salesPM || {}, engineer: p.engineer || {}, projectType: p.type, tags: p.tags || [] }))
   );
   const activeTickets = allTickets.filter(t => t.status !== 'Closed' && t.status !== 'Done');
   const matchedTicket = allTickets.find(t => t.id === selectedTicketId) || null;
@@ -383,6 +392,7 @@ export default function IpadOnsiteTest() {
   const [newRackAfterPhoto, setNewRackAfterPhoto] = useState(null);
   const [signatureImg, setSignatureImg] = useState(null);
   const [showSignPad, setShowSignPad] = useState(false);
+  const [skipSignature, setSkipSignature] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [closed, setClosed] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -441,7 +451,7 @@ export default function IpadOnsiteTest() {
     if (!selectedTicketId) {
       setGpsLocationSim('within_100m');
       setCheckInTime(''); setCheckOutTime(''); setWorkDetail(''); setIssueDetail('');
-      setPhotos([]); setSignatureImg(null); setShowSignPad(false);
+      setPhotos([]); setSignatureImg(null); setShowSignPad(false); setSkipSignature(false);
       setEmailSent(false); setClosed(false); setShowPdfPreview(false); setSrNumber('');
       setCheckedOutItems([]); setReplacedDevice({ brand: '', model: '', sn: '' }); setStockDeducted(false);
       setShowStockPicker(false); setSelectedStockId(''); setWithdrawQty(1); setWithdrawPurpose('ติดตั้งใหม่');
@@ -470,6 +480,7 @@ export default function IpadOnsiteTest() {
     setIssueDetail(tk.issueDetail || '');
     setPhotos(tk.photos || []);
     setSignatureImg(tk.signatureImg || null);
+    setSkipSignature(tk.skipSignature || false);
     setSrNumber(tk.srNumber || '');
     setEmailSent(tk.emailSent || false);
     setClosed(tk.status === 'Closed' || tk.status === 'Done');
@@ -513,7 +524,7 @@ export default function IpadOnsiteTest() {
   }, [selectedTicketId]);
 
   /* ── Helpers ── */
-  const isFormLocked = !checkInTime;
+  const isFormLocked = !matchedTicket?.noOnsite && !checkInTime;
   const doneCount = checklist.filter(c => c.done).length;
   const donePct = checklist.length > 0 ? Math.round(doneCount / checklist.length * 100) : 0;
   const now = () => new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'medium' });
@@ -526,7 +537,7 @@ export default function IpadOnsiteTest() {
   };
 
   const handleCheckIn = () => {
-    if (gpsLocationSim === 'far_away') {
+    if (!matchedTicket?.noOnsite && gpsLocationSim === 'far_away') {
       window.dispatchEvent(new CustomEvent('show-toast', {
         detail: {
           title: 'ไม่สามารถ Check-in ได้',
@@ -541,7 +552,7 @@ export default function IpadOnsiteTest() {
     saveToDb({ checkInTime: t, status: 'In Progress' });
   };
   const handleCheckOut = () => {
-    if (gpsLocationSim === 'far_away') {
+    if (!matchedTicket?.noOnsite && gpsLocationSim === 'far_away') {
       window.dispatchEvent(new CustomEvent('show-toast', {
         detail: {
           title: 'ไม่สามารถ Check-out ได้',
@@ -752,6 +763,39 @@ export default function IpadOnsiteTest() {
     setTimeout(() => { setClosed(true); }, 1500);
   };
 
+  const handleSubmitCloseApproval = () => {
+    const reportSR = srNumber || getNextServiceReportNumber();
+    if (!srNumber) setSrNumber(reportSR);
+    const nowStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    const log = [
+      ...activityLog,
+      { time: nowStr, text: `ส่งคำขออนุมัติปิดตั๋วไปยัง Service Manager (รายงานบริการ: ${reportSR})` }
+    ];
+    setActivityLog(log);
+
+    saveToDb({
+      status: 'Waiting Close Approval',
+      rejectionReason: '',
+      pct: 100,
+      srNumber: reportSR,
+      checkInTime,
+      checkOutTime,
+      workDetail,
+      issueDetail,
+      checklist,
+      checkedOutItems,
+      replacedDevice,
+      stockDeducted,
+      damagedProduct: { checked: damagedChecked, warranty: damagedWarranty, info: damagedInfo, photos: damagedPhotos, photo: damagedPhotos.length > 0 ? '📷' : false },
+      others: { checked: othersChecked, list: othersList },
+      signatureImg
+    });
+
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'ส่งคำขออนุมัติสำเร็จ', message: `ส่งคำขออนุมัติปิดตั๋ว ${selectedTicketId} เรียบร้อยแล้ว`, type: 'success' }
+    }));
+  };
+
   /* ── Ticket type badge color ── */
   const typeBadge = (type) => {
     const colors = { Install: '#2563eb', MA: '#7c3aed', PM: '#0891b2' };
@@ -805,7 +849,7 @@ export default function IpadOnsiteTest() {
       <div className="page-header">
         <div>
           <div className="page-title">iPad Air Onsite Simulator — ส่วนทดสอบช่างหน้างาน</div>
-          <div className="page-subtitle">จำลองมุมมองปฏิบัติงานของวิศวกร/ช่างเทคนิค (Staff) หน้างานบน iPad Air พร้อมฟอร์ม Onsite Report, E-Signature, Device Replacement และ Auto Close</div>
+          <div className="page-subtitle">จำลองมุมมองปฏิบัติงานของเจ้าหน้าที่เทคนิค (Staff) หน้างานบน iPad Air พร้อมฟอร์ม Onsite Report, E-Signature, Device Replacement และ Auto Close</div>
         </div>
       </div>
 
@@ -860,6 +904,48 @@ export default function IpadOnsiteTest() {
 
                 {matchedTicket ? (
                   <>
+                    {/* Banners for Close Approval status and rejection */}
+                    {matchedTicket.status === 'Waiting Close Approval' && (
+                      <div style={{
+                        background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                        border: '1.5px solid #3b82f6',
+                        borderRadius: 10,
+                        padding: '12px 16px',
+                        marginBottom: 14,
+                        color: '#1e40af',
+                        fontSize: 11.5,
+                        lineHeight: 1.5,
+                        fontFamily: 'Prompt, sans-serif'
+                      }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          🔒 อยู่ระหว่างรออนุมัติปิดตั๋ว
+                        </div>
+                        ตั๋วใบนี้ถูกส่งคำขออนุมัติปิดตั๋วแล้วและกำลังอยู่ระหว่างการตรวจสอบโดย Service Manager
+                      </div>
+                    )}
+
+                    {matchedTicket.rejectionReason && matchedTicket.status !== 'Waiting Close Approval' && (
+                      <div style={{
+                        background: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+                        border: '1.5px solid #ef4444',
+                        borderRadius: 10,
+                        padding: '12px 16px',
+                        marginBottom: 14,
+                        color: '#991b1b',
+                        fontSize: 11.5,
+                        lineHeight: 1.5,
+                        fontFamily: 'Prompt, sans-serif'
+                      }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626' }}>
+                          ❌ คำขอปิดตั๋วถูกส่งกลับแก้ไข
+                        </div>
+                        <strong>เหตุผล:</strong> {matchedTicket.rejectionReason}
+                        <div style={{ marginTop: 6, fontSize: 10.5, color: '#b91c1c' }}>
+                          💡 โปรดปรับปรุงแก้ไขรายละเอียดการทำงานหรือข้อมูลตามความเห็นด้านบน แล้วส่งตรวจสอบใหม่อีกครั้ง
+                        </div>
+                      </div>
+                    )}
+
                     {/* ═══════════════════════════════════════ */}
                     {/* ส่วนที่ 1: ข้อมูล Ticket และผู้เกี่ยวข้อง */}
                     {/* ═══════════════════════════════════════ */}
@@ -880,7 +966,7 @@ export default function IpadOnsiteTest() {
                       <FieldRow label="ตำแหน่ง" value={matchedTicket.salesPM?.role} />
 
                       <div style={{ borderTop: '1px solid #f1f5f9', margin: '8px 0' }} />
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#0891b2', marginBottom: 4 }}>🔧 วิศวกร</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#0891b2', marginBottom: 4 }}>🔧 เจ้าหน้าที่เทคนิค</div>
                       <FieldRow label="ชื่อ" value={`${matchedTicket.engineer?.name || '-'} (${matchedTicket.engineer?.nickname || '-'})`} />
                       <FieldRow label="โทร" value={matchedTicket.engineer?.phone} />
 
@@ -923,6 +1009,12 @@ export default function IpadOnsiteTest() {
                       {isFormLocked && (
                         <div style={{ marginTop: 8, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 8, fontSize: 10.5, color: '#92400e', textAlign: 'center' }}>
                           🔒 กรุณากด Check-in ก่อนเพื่อปลดล็อคฟอร์ม
+                        </div>
+                      )}
+
+                      {matchedTicket?.noOnsite && (
+                        <div style={{ marginTop: 8, background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, padding: 8, fontSize: 10.5, color: '#065f46', textAlign: 'center', fontWeight: 700 }}>
+                          💡 งานภายใน/Lab - ไม่ต้อง Onsite เช็คอิน
                         </div>
                       )}
                     </Card>
@@ -1022,7 +1114,7 @@ export default function IpadOnsiteTest() {
                                             setRackPhotos(updated);
                                             saveToDb({ rackPhotos: updated });
                                           }} 
-                                          style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#fee2e2' }}
+                                          style={{ border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#fee2e2' }}
                                         >
                                           ✕ ลบ
                                         </button>
@@ -1537,34 +1629,43 @@ export default function IpadOnsiteTest() {
                         <SectionTitle icon="✍️">ส่วนที่ 3: ลงนามและยืนยันส่งงาน</SectionTitle>
                         
                         {/* Signature Section */}
-                        <div style={{ marginBottom: 12 }}>
-                          <label style={{ fontSize: 10.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>ลายมือชื่อลูกค้า (Customer Signature)</label>
-                          
-                          {!signatureImg && !showSignPad && (
-                            <button onClick={() => setShowSignPad(true)} style={{ ...btnStyle, width: '100%', background: '#3b82f6', color: '#fff', border: 'none', padding: '10px 0', fontSize: 11.5 }}>
-                              ✍️ แตะเพื่อลงลายมือชื่อลูกค้า
-                            </button>
-                          )}
-                          
-                          {showSignPad && (
-                            <div style={{ border: '1.5px solid #cbd5e1', borderRadius: 8, padding: 8, background: '#fff' }}>
-                              <SignaturePad onSign={handleSign} width={400} height={120} />
-                              <button onClick={() => setShowSignPad(false)} style={{ ...btnStyle, width: '100%', background: '#64748b', color: '#fff', border: 'none', fontSize: 10, marginTop: 6 }}>
-                                ยกเลิก
+                        {!skipSignature && (
+                          <div style={{ marginBottom: 12 }}>
+                            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>ลายมือชื่อลูกค้า (Customer Signature)</label>
+                            
+                            {!signatureImg && !showSignPad && (
+                              <button onClick={() => setShowSignPad(true)} style={{ ...btnStyle, width: '100%', background: '#3b82f6', color: '#fff', border: 'none', padding: '10px 0', fontSize: 11.5 }}>
+                                ✍️ แตะเพื่อลงลายมือชื่อลูกค้า
                               </button>
-                            </div>
-                          )}
-                          
-                          {signatureImg && (
-                            <div style={{ border: '1.5px solid #86efac', borderRadius: 8, padding: 8, background: '#f0fdf4', textAlign: 'center' }}>
-                              <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, marginBottom: 4 }}>✓ ลงลายมือชื่อเรียบร้อยแล้ว</div>
-                              <img src={signatureImg} alt="Customer Signature" style={{ border: '1px solid #cbd5e1', borderRadius: 6, maxHeight: 80, maxWidth: '100%', background: '#fff', objectFit: 'contain' }} />
-                              <button onClick={() => { setSignatureImg(null); saveToDb({ signatureImg: null }); }} style={{ ...btnStyle, background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', fontSize: 10, width: '100%', marginTop: 6 }}>
-                                ล้างลายเซ็น
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                            
+                            {showSignPad && (
+                              <div style={{ border: '1.5px solid #cbd5e1', borderRadius: 8, padding: 8, background: '#fff' }}>
+                                <SignaturePad onSign={handleSign} width={400} height={120} />
+                                <button onClick={() => setShowSignPad(false)} style={{ ...btnStyle, width: '100%', background: '#64748b', color: '#fff', border: 'none', fontSize: 10, marginTop: 6 }}>
+                                  ยกเลิก
+                                </button>
+                              </div>
+                            )}
+                            
+                            {signatureImg && (
+                              <div style={{ border: '1.5px solid #86efac', borderRadius: 8, padding: 8, background: '#f0fdf4', textAlign: 'center' }}>
+                                <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, marginBottom: 4 }}>✓ ลงลายมือชื่อเรียบร้อยแล้ว</div>
+                                <img src={signatureImg} alt="Customer Signature" style={{ border: '1px solid #cbd5e1', borderRadius: 6, maxHeight: 80, maxWidth: '100%', background: '#fff', objectFit: 'contain' }} />
+                                <button onClick={() => { setSignatureImg(null); saveToDb({ signatureImg: null }); }} style={{ ...btnStyle, background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', fontSize: 10, width: '100%', marginTop: 6 }}>
+                                  ล้างลายเซ็น
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {skipSignature && (
+                          <div style={{ marginBottom: 12, border: '1.5px dashed #cbd5e1', borderRadius: 8, padding: 10, background: '#f8fafc', textAlign: 'center' }}>
+                            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>💡 ได้รับการยกเว้นลายเซ็น (กำหนดโดย Service Manager)</div>
+                            <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>(งานประเภทรีโมท / ดูแลระบบหลังบ้าน - ส่งอีเมลปิดงานได้ทันที)</div>
+                          </div>
+                        )}
 
                         {/* Document & Email Actions */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
@@ -1572,24 +1673,40 @@ export default function IpadOnsiteTest() {
                             📄 Preview PDF
                           </button>
                           
-                          <button onClick={handleOpenEmailDialog} disabled={!signatureImg}
-                            style={{ 
-                              ...btnStyle, 
-                              background: signatureImg ? 'linear-gradient(135deg,#16a34a,#22c55e)' : '#a1a1aa', 
-                              color: '#fff', 
-                              border: 'none', 
-                              padding: '10px 0', 
-                              fontSize: 11.5,
-                              opacity: signatureImg ? 1 : 0.5,
-                              cursor: signatureImg ? 'pointer' : 'not-allowed'
-                            }}>
-                            📧 ส่ง Email ปิดงาน
-                          </button>
+                          {matchedTicket?.requireCloseApproval ? (
+                            <button onClick={handleSubmitCloseApproval} disabled={!(signatureImg || skipSignature) || matchedTicket?.status === 'Waiting Close Approval'}
+                              style={{ 
+                                ...btnStyle, 
+                                background: (signatureImg || skipSignature) && matchedTicket?.status !== 'Waiting Close Approval' ? 'linear-gradient(135deg,#3b82f6,#2563eb)' : '#a1a1aa', 
+                                color: '#fff', 
+                                border: 'none', 
+                                padding: '10px 0', 
+                                fontSize: 11.5,
+                                opacity: (signatureImg || skipSignature) && matchedTicket?.status !== 'Waiting Close Approval' ? 1 : 0.5,
+                                cursor: (signatureImg || skipSignature) && matchedTicket?.status !== 'Waiting Close Approval' ? 'pointer' : 'not-allowed'
+                              }}>
+                              {matchedTicket?.status === 'Waiting Close Approval' ? '🔒 รออนุมัติปิดตั๋ว...' : '📤 ส่งตรวจสอบและขอปิด'}
+                            </button>
+                          ) : (
+                            <button onClick={handleOpenEmailDialog} disabled={!(signatureImg || skipSignature)}
+                              style={{ 
+                                ...btnStyle, 
+                                background: (signatureImg || skipSignature) ? 'linear-gradient(135deg,#16a34a,#22c55e)' : '#a1a1aa', 
+                                color: '#fff', 
+                                border: 'none', 
+                                padding: '10px 0', 
+                                fontSize: 11.5,
+                                opacity: (signatureImg || skipSignature) ? 1 : 0.5,
+                                cursor: (signatureImg || skipSignature) ? 'pointer' : 'not-allowed'
+                              }}>
+                              📧 ส่ง Email ปิดงาน
+                            </button>
+                          )}
                         </div>
                         
-                        {!signatureImg && (
+                        {!(signatureImg || skipSignature) && (
                           <div style={{ fontSize: 9.5, color: '#dc2626', marginTop: 6, textAlign: 'center' }}>
-                            * ต้องเซ็นชื่อลูกค้าเพื่อเปิดให้กดส่งรายงานบริการทางอีเมล
+                            * ต้องเซ็นชื่อลูกค้าเพื่อเปิดให้กด{matchedTicket?.requireCloseApproval ? 'ส่งคำขออนุมัติปิดตั๋ว' : 'ส่งรายงานบริการทางอีเมล'}
                           </div>
                         )}
                       </Card>
@@ -1618,7 +1735,7 @@ export default function IpadOnsiteTest() {
           <div className="sidebar-card">
             <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 8, fontFamily: 'Kanit, sans-serif', color: '#1e40af' }}>💡 คู่มือการทดสอบ</div>
             <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>
-              หน้าจอนี้จำลองการทำงานของวิศวกร/ช่างเทคนิคบน <strong>iPad Air</strong>
+              หน้าจอนี้จำลองการทำงานของเจ้าหน้าที่เทคนิคบน <strong>iPad Air</strong>
               <br /><br />
               <strong>1.</strong> เลือก Ticket งานที่ต้องการ<br />
               <strong>2.</strong> กด Check-in เพื่อปลดล็อคฟอร์ม<br />
@@ -1667,7 +1784,7 @@ export default function IpadOnsiteTest() {
       {showPdfPreview && matchedTicket && (
         <PdfPreviewModal
           onClose={() => setShowPdfPreview(false)}
-          onOpenEmail={handleOpenEmailDialog}
+          onOpenEmail={matchedTicket?.requireCloseApproval ? null : handleOpenEmailDialog}
           data={{
             srNumber: srNumber || '(กำลังสร้าง...)',
             customer: matchedTicket.customer,
@@ -1686,6 +1803,7 @@ export default function IpadOnsiteTest() {
             issueDetail,
             photos,
             signature: signatureImg,
+            skipSignature: skipSignature,
             checkedOutItems,
             replacedDevice,
             rackPhotos

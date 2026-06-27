@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { getProjects, saveProjects, getNisStock, saveNisStock, getClaims, getNextServiceReportNumber, addServiceReport, addClaim, addClaimNotification, getNextClaimNumber } from '../mockDb';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { getProjects, saveProjects, getNisStock, saveNisStock, getClaims, getNextServiceReportNumber, addServiceReport, addClaim, addClaimNotification, getNextClaimNumber, getChecklistByType } from '../mockDb';
 
 // ── Signature Pad ──────────────────────────────────
 function SignaturePad({ onSign }) {
@@ -82,40 +82,7 @@ const FLOW_STEPS = [
   { key: 'closed', label: 'ปิด Ticket', icon: '🔒' },
 ];
 
-const INSTALL_CHECKS = [
-  'ตรวจสอบรายการสินค้า',
-  'PreConfig อุปกรณ์',
-  'ติดตั้ง Rack',
-  'เดินสาย',
-  'Config Network',
-  'Config Firewall',
-  'ทดสอบ Internet',
-  'ทดสอบ Internal',
-  'จัดทำ Network Diagram',
-  'บันทึก IP/Password',
-  'ส่งมอบงาน'
-];
-
-const MA_CHECKS = [
-  'ตรวจสอบ Log/Event',
-  'ตรวจสอบ CPU/Memory/Disk',
-  'Update Firmware',
-  'ตรวจสอบ HA Cluster',
-  'Remote Backup Config',
-  'ทดสอบ Failover',
-  'บันทึกผล Monthly Report'
-];
-
-const PM_CHECKS = [
-  'ตรวจสอบสถานะ Power Supply',
-  'ตรวจสอบอุณหภูมิ Rack/ห้อง Server',
-  'ตรวจสอบสายเคเบิลและการเชื่อมต่อ',
-  'ตรวจสอบสถานะ LED/Alarm',
-  'ทำความสะอาด Filter/พัดลม',
-  'ตรวจสอบ UPS และ Battery',
-  'บันทึกภาพถ่ายอุปกรณ์ทั้งหมด',
-  'สรุปรายงาน PM'
-];
+// Default checklists are loaded dynamically from mockDb using getChecklistByType
 
 function TicketDetailContent({ id }) {
   const navigate = useNavigate();
@@ -151,6 +118,11 @@ function TicketDetailContent({ id }) {
     }
   }
 
+  const childTickets = dbPrj ? dbPrj.tickets.filter(t => t.parentTicketId === id) : [];
+  const parentTicketObj = (dbPrj && dbTk && dbTk.parentTicketId) 
+    ? dbPrj.tickets.find(t => t.id === dbTk.parentTicketId) 
+    : null;
+
   const ticketInfo = {
     id: id || 'TK-0091',
     title: dbTk ? dbTk.title : 'ติดตั้ง FortiGate 100F + FortiSwitch — SCG Cement HQ',
@@ -158,7 +130,7 @@ function TicketDetailContent({ id }) {
     projectName: dbPrj ? dbPrj.name : 'Implement FW & Network - SCG Cement HQ',
     customer: dbPrj ? dbPrj.customer : 'SCG Cement Co., Ltd.',
     contact: dbPrj ? dbPrj.contact : { name: 'คุณอรทัย พรหม', phone: '02-777-8888', email: 'orathai@scg.co.th' },
-    location: dbPrj ? dbPrj.location : 'อาคาร SCG Experience, ถ.พระราม 4, กรุงเทพฯ',
+    location: dbTk && dbTk.location ? dbTk.location : (dbPrj ? dbPrj.location : 'อาคาร SCG Experience, ถ.พระราม 4, กรุงเทพฯ'),
     type: dbPrj ? dbPrj.type : 'Implement',
     priority: dbPrj ? dbPrj.priority : 'High',
     due: dbTk ? dbTk.due : '30 ต.ค. 2566',
@@ -195,9 +167,39 @@ function TicketDetailContent({ id }) {
   const ticketType = resolveTicketType();
 
   const initialStaff = dbTk && dbTk.assignee !== '-' ? STAFF.find(s => s.name === dbTk.assignee) : null;
-  const initialFlowStep = dbTk ? (dbTk.status === 'Closed' || dbTk.status === 'Done' ? 6 : (dbTk.assignee !== '-' ? (dbTk.checkInTime ? 2 : 1) : 0)) : 0;
+
+  const calculateFlowStep = (tk) => {
+    if (!tk) return 0;
+    if (tk.status === 'Closed' || tk.status === 'Done') return 6;
+    if (tk.status === 'Waiting Close Approval') return 5;
+    if (tk.signatureImg || tk.skipSignature) return 4;
+    if (tk.checkOutTime || tk.workDetail || tk.checklist?.some(c => c.done)) return 3;
+    if (tk.checkInTime) return 2;
+    if (tk.accepted !== false && tk.assignee !== '-') return 1;
+    return 0;
+  };
+  const initialFlowStep = calculateFlowStep(dbTk);
 
   // Unified States sync'd with Database
+  const isReqClose = !!dbTk?.requireCloseApproval;
+  const flowSteps = isReqClose ? [
+    { key: 'assigned', label: 'Assigned', icon: '📋' },
+    { key: 'confirmed', label: 'Staff ยืนยัน', icon: '✅' },
+    { key: 'checkin', label: 'Check-in หน้างาน', icon: '📍' },
+    { key: 'working', label: 'ดำเนินการ', icon: '🔧' },
+    { key: 'customer_sign', label: 'ลูกค้าเซ็นรับ', icon: '✍️' },
+    { key: 'waiting_approval', label: 'รออนุมัติปิดตั๋ว', icon: '🔒' },
+    { key: 'closed', label: 'ปิด Ticket', icon: '✅' },
+  ] : [
+    { key: 'assigned', label: 'Assigned', icon: '📋' },
+    { key: 'confirmed', label: 'Staff ยืนยัน', icon: '✅' },
+    { key: 'checkin', label: 'Check-in หน้างาน', icon: '📍' },
+    { key: 'working', label: 'ดำเนินการ', icon: '🔧' },
+    { key: 'customer_sign', label: 'ลูกค้าเซ็นรับ', icon: '✍️' },
+    { key: 'sent_email', label: 'ส่ง Email', icon: '📧' },
+    { key: 'closed', label: 'ปิด Ticket', icon: '🔒' },
+  ];
+
   const [flowStep, setFlowStep] = useState(initialFlowStep);
   const [assignedStaff, setAssignedStaff] = useState(initialStaff);
   const [showAssign, setShowAssign] = useState(false);
@@ -211,13 +213,14 @@ function TicketDetailContent({ id }) {
   const [emailSent, setEmailSent] = useState(dbTk?.status === 'Closed');
   const [closed, setClosed] = useState(dbTk ? (dbTk.status === 'Done' || dbTk.status === 'Closed') : false);
   const [showSignPad, setShowSignPad] = useState(false);
+  const [skipSignature, setSkipSignature] = useState(dbTk?.skipSignature || false);
   const [srNumber, setSrNumber] = useState(dbTk?.srNumber || '');
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectionText, setRejectionText] = useState('');
 
   const [checklist, setChecklist] = useState(() => {
     if (dbTk?.checklist && dbTk.checklist.length > 0) return dbTk.checklist;
-    let items = INSTALL_CHECKS;
-    if (ticketType === 'MA') items = MA_CHECKS;
-    else if (ticketType === 'PM') items = PM_CHECKS;
+    const items = getChecklistByType(ticketType);
     return items.map(label => ({ label, done: false }));
   });
 
@@ -381,6 +384,47 @@ function TicketDetailContent({ id }) {
     setShowSignPad(false);
     setFlowStep(4);
     updateTicketInDb({ signatureImg: sig });
+  };
+
+  const handleSubmitCloseRequest = () => {
+    updateTicketInDb({
+      status: 'Waiting Close Approval',
+      rejectionReason: '',
+      pct: 100
+    });
+    setFlowStep(5);
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'ส่งตรวจสอบสำเร็จ', message: 'ส่งคำขออนุมัติปิดตั๋วงานไปยัง Service Manager แล้ว', type: 'success' }
+    }));
+  };
+
+  const handleSMRejectClose = () => {
+    if (!rejectionText.trim()) return;
+    const reason = rejectionText.trim();
+    
+    // Update ticket in DB
+    updateTicketInDb({
+      status: 'In Progress',
+      rejectionReason: reason
+    });
+
+    // Add message to chat history
+    const systemTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const updatedChat = [...chat, {
+      from: 'SM (Somchai)',
+      msg: `[ตีกลับคำขอปิดตั๋ว] เหตุผล: ${reason}`,
+      time: systemTime
+    }];
+    setChat(updatedChat);
+    updateProjectInDb({ projectChat: updatedChat });
+
+    setShowRejectInput(false);
+    setRejectionText('');
+    setFlowStep(3); // Go back to working status
+
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'ตีกลับตั๋วเรียบร้อย', message: 'ปฏิเสธคำขอปิดตั๋วและตีกลับให้ Staff ดำเนินการต่อ', type: 'warning' }
+    }));
   };
 
   const sendChat = () => {
@@ -600,7 +644,7 @@ function TicketDetailContent({ id }) {
       {/* Flow Progress */}
       <div className="card" style={{ padding: '16px 24px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
-          {FLOW_STEPS.map((s, i) => (
+          {flowSteps.map((s, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <div style={{
@@ -615,7 +659,7 @@ function TicketDetailContent({ id }) {
                   color: i === flowStep ? 'var(--primary)' : i < flowStep ? 'var(--secondary)' : 'var(--text-muted)'
                 }}>{s.label}</span>
               </div>
-              {i < FLOW_STEPS.length-1 && (
+              {i < flowSteps.length-1 && (
                 <div style={{ flex: 1, height: 2, margin: '0 4px', marginBottom: 18, background: i < flowStep ? 'var(--secondary)' : 'var(--border)', transition: 'background .3s' }} />
               )}
             </div>
@@ -666,6 +710,54 @@ function TicketDetailContent({ id }) {
           </div>
         </div>
       </div>
+
+      {/* MA Connection Panel */}
+      {(parentTicketObj || childTickets.length > 0) && (
+        <div className="card" style={{ padding: 20, marginBottom: 20, border: '1.5px solid #bfdbfe', background: '#eff6ff' }}>
+          <div style={{ fontFamily: 'Kanit, sans-serif', fontSize: 14, fontWeight: 700, color: '#1e40af', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            🔗 ความเชื่อมโยงตั๋วงาน MA ประจำเดือน (Monthly MA Linkage)
+          </div>
+          
+          {parentTicketObj && (
+            <div style={{ fontSize: 13, color: '#1e3a8a' }}>
+              • ตั๋วงานนี้เป็น <strong>งานเพิ่มเติม/งานย่อย</strong> ภายใต้ตั๋วงาน MA หลักประจำเดือน: {' '}
+              <Link 
+                to={`/ticket/${parentTicketObj.id}`} 
+                style={{ fontWeight: 700, color: 'var(--primary)', textDecoration: 'underline' }}
+                onClick={() => {
+                  setTimeout(() => window.location.reload(), 50);
+                }}
+              >
+                [{parentTicketObj.id}] {parentTicketObj.title}
+              </Link>
+            </div>
+          )}
+
+          {childTickets.length > 0 && (
+            <div>
+              <div style={{ fontSize: 13, color: '#1e3a8a', fontWeight: 600, marginBottom: 6 }}>
+                • ตั๋วหลักใบนี้มี <strong>งานเพิ่มเติมย่อยที่เกี่ยวข้อง</strong> ดังนี้:
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 12 }}>
+                {childTickets.map(child => (
+                  <div key={child.id} style={{ fontSize: 12.5 }}>
+                    - <strong style={{color:'var(--secondary)'}}>[{child.id}]</strong> {child.title} (สถานะ: <strong style={{color:'#d97706'}}>{child.status}</strong>) - {' '}
+                    <Link 
+                      to={`/ticket/${child.id}`} 
+                      style={{ fontWeight: 600, color: 'var(--primary)', textDecoration: 'underline' }}
+                      onClick={() => {
+                        setTimeout(() => window.location.reload(), 50);
+                      }}
+                    >
+                      เปิดดูใบงานย่อย
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Ticket Info */}
       <div className="card" style={{ padding: 20, marginBottom: 20 }}>
@@ -1211,7 +1303,7 @@ function TicketDetailContent({ id }) {
                   {othersChecked && (
                     <div style={{ marginTop: 8, background: 'var(--bg)', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
                       {othersList.length === 0 ? (
-                        <div style={{ fontStyle: 'italic', fontSize: 12, color: 'var(--text-muted)' }}>ไม่มีรายการ Case Support (วิศวกรไม่ได้ระบุบน iPad หรือกดเพิ่มด้านล่าง)</div>
+                        <div style={{ fontStyle: 'italic', fontSize: 12, color: 'var(--text-muted)' }}>ไม่มีรายการ Case Support (เจ้าหน้าที่เทคนิคไม่ได้ระบุบน iPad หรือกดเพิ่มด้านล่าง)</div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
                           {othersList.map((item, idx) => (
@@ -1267,68 +1359,108 @@ function TicketDetailContent({ id }) {
                           document.getElementById('bo_prob').value = '';
                           document.getElementById('bo_sol').value = '';
                         }}>
-                          เพิ่ม Case Support
+                          เพิ่มรายการ
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
-
-                {/* Photo Upload */}
-                <div style={{ marginBottom: 16 }}>
-                  <label>รูปถ่ายการปฏิบัติงาน (ภาพประกอบ)</label>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-                    {photos.map((p, i) => (
-                      <div key={i} onClick={() => {
-                        const updated = photos.filter((_, j) => j !== i);
-                        setPhotos(updated);
-                        updateTicketInDb({ photos: updated });
-                        window.dispatchEvent(new CustomEvent('show-toast', {
-                          detail: { title: 'ลบรูปถ่าย', message: 'ลบรูปถ่ายการปฏิบัติงานสำเร็จ', type: 'info' }
-                        }));
-                      }} title="คลิกเพื่อลบรูป" style={{ width: 80, height: 80, borderRadius: 8, background: 'var(--primary-bg)', border: '1px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, cursor: 'pointer' }}>
-                        {p}
-                      </div>
-                    ))}
-                    <button onClick={() => { const updated = [...photos, '📷']; setPhotos(updated); updateTicketInDb({ photos: updated }); }}
-                      style={{ width: 80, height: 80, borderRadius: 8, border: '2px dashed var(--border)', background: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--text-muted)' }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
-                      <span style={{ fontSize: 10 }}>เพิ่มรูป</span>
-                    </button>
+              {dbTk?.rejectionReason && dbTk?.status !== 'Waiting Close Approval' && !closed && (
+                <div style={{ margin: '14px 22px', padding: '12px 16px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 20 }}>⚠️</span>
+                  <div style={{ fontSize: 13, color: '#991b1b', lineHeight: 1.5, textAlign: 'left' }}>
+                    <strong>คำขอปิดตั๋วถูกส่งกลับ/ปฏิเสธโดยผู้จัดการ:</strong>
+                    <div style={{ marginTop: 4, fontStyle: 'italic', padding: '6px 10px', background: '#fff', borderRadius: 6, border: '1px solid #fca5a5', fontWeight: 600 }}>
+                      "{dbTk.rejectionReason}"
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 12 }}>กรุณาทำการแก้ไขข้อมูลหรือปฏิบัติงานเพิ่มเติมตามคอมเมนต์ จากนั้นกดส่งตรวจสอบอีกครั้ง</div>
                   </div>
                 </div>
+              )}
 
-                {/* Customer Sign */}
-                <div style={{ marginTop: 8 }}>
-                  <label style={{ marginBottom: 8 }}>ลายเซ็นลูกค้า (E-Signature)</label>
-                  {!signatureImg && !showSignPad && (
-                    <button className="btn btn-secondary" style={{ width: '100%', justifycontent: 'center', justifyContent: 'center', padding: '14px' }} onClick={() => setShowSignPad(true)}>
-                      ✍️ เปิด Signature Pad ให้ลูกค้าเซ็น
-                    </button>
+              {/* Closure Actions */}
+              {(signatureImg || skipSignature) && !closed && (
+                <>
+                  {isReqClose ? (
+                    dbTk?.status === 'Waiting Close Approval' ? (
+                      <div style={{ padding: '20px 22px', borderTop: '2.5px solid var(--primary)', background: '#eff6ff', textAlign: 'center' }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>🔒</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary)' }}>ส่งคำขอปิด Ticket เรียบร้อยแล้ว</div>
+                        <div style={{ fontSize: 13, color: '#1e40af', marginTop: 4 }}>
+                          ตั๋วงานนี้กำลังรอการตรวจสอบและอนุมัติปิดตั๋วโดย Service Manager
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', background: '#f5f3ff' }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                          {skipSignature ? 'ข้ามขั้นตอนลงนามลูกค้าเรียบร้อย' : 'ลูกค้าเซ็นรับงานแล้ว'} — ต้องส่งตรวจสอบเพื่อปิด Ticket
+                        </div>
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ width: '100%', justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg,#6366f1,#4f46e5)', borderColor: '#4f46e5' }} 
+                          onClick={handleSubmitCloseRequest}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                          ส่งตรวจสอบและขออนุมัติปิด Ticket
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    !emailSent && (
+                      <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', background: '#f0fdf4' }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                          {skipSignature ? 'ข้ามขั้นตอนลงนามลูกค้าเรียบร้อย' : 'ลูกค้าเซ็นรับงานแล้ว'} — กดส่ง Email สรุปงานเพื่อปิด Ticket
+                        </div>
+                        <button className="btn btn-success" style={{ width: '100%', justifyContent: 'center', padding: '12px' }} onClick={handleOpenEmailDialog}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                          ส่ง Service Report Email ให้ลูกค้า → Auto Close Ticket
+                        </button>
+                      </div>
+                    )
                   )}
-                  {showSignPad && (
-                    <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: '#fff' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: 'var(--text-muted)' }}>กรุณาส่งหน้าจอให้ลูกค้าเซ็นชื่อรับงาน</div>
-                      <SignaturePad onSign={handleSign} />
+                </>
+              )}
+
+              {/* SM Approvals panel inside Ticket Detail */}
+              {chatRole === 'SM' && dbTk?.status === 'Waiting Close Approval' && !closed && (
+                <div style={{ padding: '16px 22px', borderTop: '2px solid var(--primary)', background: '#eff6ff', borderRadius: '0 0 12px 12px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--primary)', marginBottom: 6, textAlign: 'left' }}>🔒 เมนูอนุมัติสำหรับ Service Manager</div>
+                  <div style={{ fontSize: 12.5, color: '#1e40af', marginBottom: 12, textAlign: 'left' }}>
+                    คำขอปิดตั๋วรอการอนุมัติของคุณ ตรวจสอบรายละเอียดงานและลายเซ็นลูกค้า จากนั้นกดอนุมัติหรือตีกลับด้านล่าง:
+                  </div>
+                  {showRejectInput ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, textAlign: 'left' }}>
+                      <label style={{ fontSize: 12, fontWeight: 700 }}>ระบุเหตุผลการตีกลับ / ให้แก้ไข:</label>
+                      <textarea 
+                        rows={2} 
+                        value={rejectionText} 
+                        onChange={e => setRejectionText(e.target.value)} 
+                        placeholder="เช่น ขาดรูปถ่ายพอร์ตเชื่อมต่อ, ตรวจสอบ IP config อีกครั้ง..." 
+                        style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit', boxSizing:'border-box' }}
+                      />
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setShowRejectInput(false); setRejectionText(''); }}>ยกเลิก</button>
+                        <button className="btn btn-danger btn-sm" onClick={handleSMRejectClose} disabled={!rejectionText.trim()} style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>✓ ยืนยันตีกลับงาน</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button 
+                        className="btn btn-success" 
+                        style={{ flex: 1, justifyContent: 'center', background: '#10b981', borderColor: '#10b981' }}
+                        onClick={handleOpenEmailDialog}
+                      >
+                        ✓ อนุมัติการปิด Ticket
+                      </button>
+                      <button 
+                        className="btn btn-danger" 
+                        style={{ flex: 1, justifyContent: 'center', background: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
+                        onClick={() => setShowRejectInput(true)}
+                      >
+                        ✕ ปฏิเสธและตีกลับตั๋ว
+                      </button>
                     </div>
                   )}
-                  {signatureImg && (
-                    <div style={{ border: '1px solid var(--secondary)', borderRadius: 10, padding: 12, background: '#f0fdf4' }}>
-                      <div style={{ fontSize: 12, color: 'var(--secondary)', fontWeight: 600, marginBottom: 6 }}>✓ ลูกค้าเซ็นชื่อรับงานแล้ว</div>
-                      <img src={signatureImg} alt="Signature" style={{ border: '1px solid var(--border)', borderRadius: 6, background: '#fff', width: '100%', maxHeight: 100, objectFit: 'contain' }} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Send Email Dialog Action */}
-              {signatureImg && !emailSent && (
-                <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', background: '#f0fdf4' }}>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>ลูกค้าเซ็นรับงานแล้ว — กดส่ง Email สรุปงานให้ลูกค้าเพื่อปิด Ticket</div>
-                  <button className="btn btn-success" style={{ width: '100%', justifycontent: 'center', justifyContent: 'center', padding: '12px' }} onClick={handleOpenEmailDialog}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-                    ส่ง Service Report Email ให้ลูกค้า → Auto Close Ticket
-                  </button>
                 </div>
               )}
 
@@ -1350,8 +1482,9 @@ function TicketDetailContent({ id }) {
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
         {/* Right Sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1360,14 +1493,22 @@ function TicketDetailContent({ id }) {
             <div className="card-header"><div className="card-title">Timeline สถานะ</div></div>
             <div className="card-body">
               <div className="timeline">
-                {[
+                {(isReqClose ? [
                   { title: 'สร้าง Ticket (Auto)', sub: `จาก Project ${ticketInfo.project}`, date: '', color: '#6366f1', done: true },
                   { title: 'Assigned → ' + (assignedStaff?.name || 'รอ Assign'), sub: 'by Service Manager', date: assignedStaff ? '' : '', color: assignedStaff ? '#10b981' : '#e2e8f0', done: !!assignedStaff },
                   { title: 'Check-in หน้างาน', sub: checkInTime ? `Check-in แล้ว` : 'ยังไม่ได้ Check-in', date: checkInTime || '', color: checkInTime ? '#f59e0b' : '#e2e8f0', done: !!checkInTime },
                   { title: 'ดำเนินการ Onsite', sub: `${progress}% เสร็จสิ้น`, date: '', color: progress > 0 ? '#3b82f6' : '#e2e8f0', done: progress === 100 },
-                  { title: 'ลูกค้าเซ็นรับงาน', sub: signatureImg ? 'เซ็นแล้ว' : 'รอลายเซ็น', date: '', color: signatureImg ? '#10b981' : '#e2e8f0', done: !!signatureImg },
+                  { title: 'ลูกค้าเซ็นรับงาน', sub: skipSignature ? 'ยกเว้นการเซ็น' : (signatureImg ? 'เซ็นแล้ว' : 'รอลายเซ็น'), date: '', color: (signatureImg || skipSignature) ? '#10b981' : '#e2e8f0', done: !!signatureImg || skipSignature },
+                  { title: 'รออนุมัติปิดตั๋ว', sub: dbTk?.status === 'Waiting Close Approval' ? 'ส่งคำขอแล้ว รอตรวจรับ' : (dbTk?.status === 'Closed' ? 'อนุมัติแล้ว' : 'รอดำเนินการ'), date: '', color: (dbTk?.status === 'Waiting Close Approval' || dbTk?.status === 'Closed' || dbTk?.status === 'Done') ? '#6366f1' : '#e2e8f0', done: dbTk?.status === 'Waiting Close Approval' || dbTk?.status === 'Closed' || dbTk?.status === 'Done' },
+                  { title: 'ปิด Ticket', sub: closed ? `รหัส SR: ${srNumber}` : 'รอดำเนินการ', date: '', color: closed ? '#10b981' : '#e2e8f0', done: closed },
+                ] : [
+                  { title: 'สร้าง Ticket (Auto)', sub: `จาก Project ${ticketInfo.project}`, date: '', color: '#6366f1', done: true },
+                  { title: 'Assigned → ' + (assignedStaff?.name || 'รอ Assign'), sub: 'by Service Manager', date: assignedStaff ? '' : '', color: assignedStaff ? '#10b981' : '#e2e8f0', done: !!assignedStaff },
+                  { title: 'Check-in หน้างาน', sub: checkInTime ? `Check-in แล้ว` : 'ยังไม่ได้ Check-in', date: checkInTime || '', color: checkInTime ? '#f59e0b' : '#e2e8f0', done: !!checkInTime },
+                  { title: 'ดำเนินการ Onsite', sub: `${progress}% เสร็จสิ้น`, date: '', color: progress > 0 ? '#3b82f6' : '#e2e8f0', done: progress === 100 },
+                  { title: 'ลูกค้าเซ็นรับงาน', sub: skipSignature ? 'ยกเว้นการเซ็น' : (signatureImg ? 'เซ็นแล้ว' : 'รอลายเซ็น'), date: '', color: (signatureImg || skipSignature) ? '#10b981' : '#e2e8f0', done: !!signatureImg || skipSignature },
                   { title: 'ส่ง Email / Auto Close', sub: closed ? `รหัส SR: ${srNumber}` : 'รอดำเนินการ', date: '', color: closed ? '#10b981' : '#e2e8f0', done: closed },
-                ].map((t, i) => (
+                ]).map((t, i) => (
                   <div className="timeline-item" key={i}>
                     <div className="timeline-dot" style={{ background: t.color }}></div>
                     <div className="timeline-content">

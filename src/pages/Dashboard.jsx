@@ -77,7 +77,9 @@ function DonutChart({ data }) {
   const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
   let cum = 0;
   const r = 54, cx = 70, cy = 70, inner = 36;
-  const slices = data.map((d, i) => {
+  const slices = [];
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
     const start = (cum / total) * 2 * Math.PI - Math.PI / 2;
     cum += d.value;
     const end = (cum / total) * 2 * Math.PI - Math.PI / 2;
@@ -87,8 +89,8 @@ function DonutChart({ data }) {
     const ix2 = cx + inner * Math.cos(end), iy2 = cy + inner * Math.sin(end);
     const large = end - start > Math.PI ? 1 : 0;
     const path = `M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${inner} ${inner} 0 ${large} 0 ${ix1} ${iy1}`;
-    return { path, color: colors[i % colors.length], ...d };
-  });
+    slices.push({ path, color: colors[i % colors.length], ...d });
+  }
 
   return (
     <div className="donut-chart">

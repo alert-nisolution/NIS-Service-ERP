@@ -1,0 +1,14 @@
+- [x] พัฒนาแผง Dashboard สถิติส่วนบุคคล (6 stat cards) ใน `StaffPortal.jsx`
+- [x] เพิ่มการ์ดแสดงผลสถิติตั๋วงานที่เกินกำหนด (Overdue Tasks) ในตัว Dashboard
+- [x] เพิ่มระบบคลิกการ์ดแต่ละใบเพื่อแสดงป็อปอัพข้อมูลรายละเอียดแบบ Interactive (Popup Modal)
+- [x] เพิ่มดีไซน์และ CSS แอนิเมชันจุดกระพริบแดงเตือน (pulse-ping)
+- [x] เพิ่มระบบให้กำหนด Checklist ในขั้นตอนการสร้าง Ticket ใหม่ในโครงการ (`Projects.jsx`)
+- [x] ดึง Checklist Master เริ่มต้นตามประเภทงานโดยอัตโนมัติ (Install, PM, MA Onsite, Support, Backup, Report)
+- [x] สามารถเพิ่ม Checklist รายข้อเพิ่มเติมได้ และลบข้อที่ไม่ต้องการออกก่อนกดสร้าง Ticket
+- [x] ย้ายสิทธิ์การยกเว้นลายมือชื่อ (Skip Signature) ไปจัดการที่ระดับ Service Manager เท่านั้น
+- [x] เพิ่มช่องติ๊ก Skip Signature ในขั้นตอนการสร้างตั๋วงานใหม่ในหน้าโครงการ (`Projects.jsx`)
+- [x] อนุญาตให้ Service Manager ปรับปรุงหรือเปลี่ยนแปลงค่า Skip Signature ภายหลังได้ในหน้า `TicketDetail.jsx`
+- [x] ปิดกั้นไม่ให้ช่างเทคนิคหน้างานปรับยกเว้นลายเซ็นเองได้ในหน้า iPad Simulator (ถอดปุ่มติ๊กออก และตั้งค่าเป็นข้อมูลแสดงผลแบบ Read-Only)
+- [x] แสดงข้อความและสัญลักษณ์ "ได้รับการยกเว้นลายเซ็น (Remote/System Job)" ในใบพรีวิว PDF Report
+- [x] ปรับแก้ไของค์ประกอบและ Lint error ให้ผ่านเกณฑ์ของ eslint
+- [x] ทดสอบความถูกต้องและตรวจการคอมไพล์ด้วย `npm run build` และ `npm run lint`

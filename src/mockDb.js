@@ -100,7 +100,7 @@ const defaultProjects = [
     location: 'อาคาร SCG Experience, ถ.พระราม 4, กรุงเทพฯ 10330',
     tickets:[
       {id:'TK-0091',title:'ติดตั้ง FortiGate 100F + FortiSwitch', status:'In Progress', assignee:'Krit P.', due:'2023-10-30', pct:70, ticketType:'Install'},
-      {id:'TK-0092',title:'Config WiFi Access Points (4 จุด)', status:'Open', assignee:'Nok S.', due:'2023-11-05', pct:0, ticketType:'Install'},
+      {id:'TK-0092',title:'Config WiFi Access Points (4 จุด)', status:'Open', assignee:'Nok S.', due:'2023-11-05', accepted:false, pct:0, ticketType:'Install'},
       {id:'TK-0093',title:'PM รอบที่ 1 (เดือน 3)', status:'Pending', assignee:'-', due:'2024-01-15', pct:0, ticketType:'PM'},
     ]
   },
@@ -122,7 +122,7 @@ const defaultProjects = [
     location: 'อาคาร PTT Digital, ถ.วิภาวดีรังสิต, กรุงเทพฯ 10900',
     tickets:[
       {id:'TK-0085',title:'Config Backup (ต.ค.)', status:'Done', assignee:'Krit P.', due:'2023-10-31', pct:100, ticketType:'MA'},
-      {id:'TK-0086',title:'Monthly Report (ต.ค.)', status:'In Progress', assignee:'Krit P.', due:'2023-11-05', pct:60, ticketType:'MA'},
+      {id:'TK-0086',title:'Monthly Report (ต.ค.)', status:'In Progress', assignee:'Krit P.', due:'2023-11-05', accepted:false, pct:60, ticketType:'MA'},
     ]
   },
 ];
@@ -193,6 +193,34 @@ const initDb = () => {
   if (!localStorage.getItem('nis_claim_sequence')) {
     localStorage.setItem('nis_claim_sequence', '2');
   }
+
+  // Automatic database migration for pending accept tickets demo
+  try {
+    const projStr = localStorage.getItem('nis_projects');
+    if (projStr) {
+      const projs = JSON.parse(projStr);
+      let updated = false;
+      const newProjs = projs.map(p => {
+        const newTkList = p.tickets.map(t => {
+          if (t.id === 'TK-0092' && t.accepted === undefined) {
+            updated = true;
+            return { ...t, accepted: false };
+          }
+          if (t.id === 'TK-0086' && t.accepted === undefined) {
+            updated = true;
+            return { ...t, accepted: false };
+          }
+          return t;
+        });
+        return { ...p, tickets: newTkList };
+      });
+      if (updated) {
+        localStorage.setItem('nis_projects', JSON.stringify(newProjs));
+      }
+    }
+  } catch (e) {
+    console.error("Migration error:", e);
+  }
 };
 
 // Initialize on load
@@ -229,6 +257,30 @@ export const getProjects = () => {
   initDb();
   let projects = safeGet('nis_projects', defaultProjects);
   
+  // Initialize PRJ-GENERAL if missing
+  if (!projects.find(p => p.id === 'PRJ-GENERAL')) {
+    projects.push({
+      id: 'PRJ-GENERAL',
+      name: 'ตั๋วบริการทั่วไป (General & Manual Tickets)',
+      customer: 'งานทั่วไป / ไม่มีโครงการ',
+      type: 'General',
+      priority: 'Medium',
+      progress: 100,
+      status: 'Active',
+      startDate: '2023-01-01',
+      endDate: '2030-12-31',
+      staff: '-',
+      soRef: '-',
+      tags: ['General'],
+      contact: { name: 'ศูนย์บริการ NIS', phone: '02-123-4567', email: 'service@nis.co.th' },
+      salesPM: { name: 'System', nickname: 'SYS', phone: '-', role: 'System' },
+      engineer: { name: 'Unassigned', nickname: '-', phone: '-' },
+      location: 'NIS Office / Remote',
+      tickets: []
+    });
+    localStorage.setItem('nis_projects', JSON.stringify(projects));
+  }
+
   // SANITIZE AND FORCE DEFAULTS FOR NEW FIELDS IF MISSING
   let updated = false;
   projects = projects.map(p => {
@@ -265,6 +317,21 @@ export const getProjects = () => {
       p.location = 'อาคาร SCG Experience, ถ.พระราม 4, กรุงเทพฯ 10330';
       changed = true;
     }
+
+    // 5. sanitize tickets
+    p.tickets = (p.tickets || []).map(t => {
+      let tkChanged = false;
+      if (t.requireCloseApproval === undefined) {
+        t.requireCloseApproval = false;
+        tkChanged = true;
+      }
+      if (t.rejectionReason === undefined) {
+        t.rejectionReason = '';
+        tkChanged = true;
+      }
+      if (tkChanged) changed = true;
+      return t;
+    });
     
     if (changed) updated = true;
     return p;
@@ -382,6 +449,63 @@ export const addClaimNotification = (notif) => {
   saveClaimNotifications(list);
 };
 
+// ── System Config Helpers ──
+const defaultSystemConfig = {
+  jobTypes: ['Runrate','Implement','MA-Device','MA-Fortigate','MA-Software','MA-Network'],
+  tags: ['Firewall','Network','WiFi','Server','CCTV','Access Control','PC&Notebook','Peripheral','Software','Cable','Windows Server','VMware','HyperV'],
+  implementChecklist: [
+    'ตรวจสอบรายการสินค้า / อุปกรณ์ครบถ้วน',
+    'ดำเนินการ PreConfig อุปกรณ์ก่อนออกงาน',
+    'ติดตั้ง Rack / ขึ้นแร็ค',
+    'เดินสาย Fiber / UTP',
+    'Config Network Address / VLAN',
+    'Config ระบบ Firewall Policy',
+    'ทดสอบการเชื่อมต่อ Internet / WAN',
+    'ทดสอบ Internal Network',
+    'จัดทำ Network Diagram ตาม AS-BUILT',
+    'บันทึก IP / User / Password เข้าระบบ',
+    'ส่งมอบงานและให้ลูกค้าเซ็นรับ',
+  ],
+  maChecklist: [
+    'ตรวจสอบ Log / Event ย้อนหลัง',
+    'ตรวจสอบ CPU / Memory / Disk Usage',
+    'Update Firmware / Signature ล่าสุด',
+    'ตรวจสอบ HA Cluster / Failover',
+    'Remote Backup Config',
+    'ทดสอบ Failover System',
+    'บันทึกผลการตรวจสอบลง Monthly Report',
+  ],
+  pmChecklist: [
+    'ทำความสะอาดอุปกรณ์ใน Rack',
+    'ตรวจสอบสถานะ LED / Fan',
+    'ตรวจสอบ Cable / Fiber Connection',
+    'ตรวจสอบ Power Supply / UPS',
+    'ตรวจสอบอุณหภูมิห้อง Server Room',
+    'ทดสอบ Backup / Restore',
+    'จัดทำ PM Report',
+  ],
+  slaOptions: ['8x5xNBD','8x5','24x7x4','24x7xNBD'],
+  warningDays: { service: 60, product: 30 }
+};
+
+export const getSystemConfig = () => {
+  initDb();
+  const config = localStorage.getItem('nis_system_config');
+  if (!config) {
+    saveSystemConfig(defaultSystemConfig);
+    return defaultSystemConfig;
+  }
+  try {
+    return JSON.parse(config);
+  } catch (err) {
+    return defaultSystemConfig;
+  }
+};
+
+export const saveSystemConfig = (data) => {
+  localStorage.setItem('nis_system_config', JSON.stringify(data));
+};
+
 export const resetDb = () => {
   localStorage.setItem('nis_quotations', JSON.stringify(defaultQuotations));
   localStorage.setItem('nis_sales_orders', JSON.stringify(defaultSalesOrders));
@@ -391,6 +515,198 @@ export const resetDb = () => {
   localStorage.setItem('nis_sales_team', JSON.stringify(defaultSalesTeam));
   localStorage.setItem('nis_claims', JSON.stringify(defaultClaims));
   localStorage.setItem('nis_claims_notifications', JSON.stringify(defaultClaimNotifications));
+  localStorage.setItem('nis_system_config', JSON.stringify(defaultSystemConfig));
+  localStorage.setItem('nis_pending_tickets', JSON.stringify([]));
+  localStorage.setItem('nis_staff_personal_checklists', JSON.stringify({}));
   localStorage.setItem('nis_sr_sequence', '1');
   localStorage.setItem('nis_claim_sequence', '2');
+};
+
+// ── Pending Tickets (Staff Requests) Helpers ──
+export const getPendingTickets = () => {
+  initDb();
+  return safeGet('nis_pending_tickets', []);
+};
+
+export const savePendingTickets = (data) => {
+  localStorage.setItem('nis_pending_tickets', JSON.stringify(data));
+};
+
+export const addPendingTicket = (ticket) => {
+  const list = getPendingTickets();
+  list.unshift(ticket);
+  savePendingTickets(list);
+};
+
+// ── Staff Personal Checklists Helpers ──
+export const getPersonalChecklists = () => {
+  initDb();
+  return safeGet('nis_staff_personal_checklists', {});
+};
+
+export const savePersonalChecklists = (data) => {
+  localStorage.setItem('nis_staff_personal_checklists', JSON.stringify(data));
+};
+
+export const getChecklistByType = (type) => {
+  const config = getSystemConfig();
+  if (type === 'Install' || type === 'Implement') {
+    return config.implementChecklist;
+  }
+  if (type === 'PM') {
+    return config.pmChecklist;
+  }
+  if (type === 'MA Onsite' || type === 'MA' || type === 'Support') {
+    return config.maChecklist;
+  }
+  // Fallbacks:
+  if (type === 'Backup') {
+    return [
+      'ตรวจสอบสถานะงาน Backup ประจำวัน/สัปดาห์',
+      'ทดสอบการดึงข้อมูลกลับคืนเพื่อยืนยันความสมบูรณ์ (Restore Test)',
+      'ตรวจสอบความจุของสื่อบันทึกข้อมูลสำรอง',
+      'ทำรายงานรายงานแจ้งผลการ Backup สำเร็จ'
+    ];
+  }
+  if (type === 'Report') {
+    return [
+      'รวบรวมสถิติการใช้งานและปัญหาที่เกิดขึ้นในรอบช่วงเวลา',
+      'จัดทำเอกสารวิเคราะห์แนวโน้มและสรุปข้อเสนอแนะ',
+      'ส่งรายงานสรุปให้ทางผู้จัดการโครงการตรวจสอบและนำส่งลูกค้า'
+    ];
+  }
+  return ['ตรวจสอบความเรียบร้อยหน้างาน', 'ส่งมอบรายงานผลงาน'];
+};
+
+export const PROJECT_SITES = {
+  'PRJ-2023-044': [
+    'อาคาร SCG Experience พระราม 4',
+    'สำนักงานใหญ่ SCG บางซื่อ',
+    'โรงงานปูนซีเมนต์ แก่งคอย',
+    'คลังสินค้า SCG วังน้อย'
+  ],
+  'PRJ-2023-043': [
+    'Global Finance Tower สาทร',
+    'สาขารัชดาภิเษก',
+    'สาขาเชียงใหม่',
+    'สาขาชลบุรี'
+  ],
+  'PRJ-2023-041': [
+    'อาคาร PTT Digital วิภาวดี',
+    'ศูนย์พลังงานแห่งชาติ (PTT HQ)',
+    'สำนักงานระยอง (โรงแยกก๊าซ)',
+    'สำนักงานชลบุรี'
+  ],
+  'PRJ-GENERAL': [
+    'NIS Office (สำนักงานใหญ่)',
+    'Remote Support (ปฏิบัติงานทางไกล)',
+    'Site ลูกค้าภายนอก (ระบุในรายละเอียด)'
+  ]
+};
+
+const defaultCustomers = [
+  {
+    id: 'CUST-001',
+    name: 'SCG Cement Co., Ltd.',
+    taxId: '0105556123456',
+    contacts: [
+      { name: 'คุณอรทัย พรหม', phone: '02-777-8888', email: 'orathai@scg.co.th', role: 'IT Manager' },
+      { name: 'คุณณัฐพล ใจดี', phone: '081-333-4455', email: 'nattapol@scg.co.th', role: 'Network Engineer' }
+    ],
+    locations: [
+      { label: 'อาคาร SCG Experience พระราม 4', address: 'อาคาร SCG Experience, ถ.พระราม 4, กรุงเทพฯ 10330', coordinates: '13.7224, 100.5794', assignedStaff: ['Krit P.', 'Nok S.'] },
+      { label: 'สำนักงานใหญ่ SCG บางซื่อ', address: '1 ถ.ปูนซิเมนต์ไทย, บางซื่อ, กรุงเทพฯ 10800', coordinates: '13.8038, 100.5381', assignedStaff: ['Krit P.'] },
+      { label: 'โรงงานปูนซีเมนต์ แก่งคอย', address: '99 ม.5 ต.บ้านป่า, แก่งคอย, สระบุรี 18110', coordinates: '14.5872, 100.9983', assignedStaff: ['Pom T.'] },
+      { label: 'คลังสินค้า SCG วังน้อย', address: '123 ม.3, วังน้อย, พระนครศรีอยุธยา 13170', coordinates: '14.2325, 100.7161', assignedStaff: ['Ann K.'] }
+    ]
+  },
+  {
+    id: 'CUST-002',
+    name: 'Global Finance Group Co., Ltd.',
+    taxId: '0105553987654',
+    contacts: [
+      { name: 'คุณประสิทธิ์ ดี', phone: '02-999-0000', email: 'prasit@globalfinance.com', role: 'Facility Lead' },
+      { name: 'คุณสุนิสา สมบูรณ์', phone: '089-111-2222', email: 'sunisa@globalfinance.com', role: 'IT Support' }
+    ],
+    locations: [
+      { label: 'Global Finance Tower สาทร', address: 'อาคาร Global Finance Tower, ถ.สาทร, กรุงเทพฯ 10120', coordinates: '13.7214, 100.5283', assignedStaff: ['Nok S.', 'Art W.'] },
+      { label: 'สาขารัชดาภิเษก', address: '456 ถ.รัชดาภิเษก, ห้วยขวาง, กรุงเทพฯ 10310', coordinates: '13.7745, 100.5741', assignedStaff: ['Nok S.'] },
+      { label: 'สาขาเชียงใหม่', address: '88 ถ.ห้วยแก้ว, ต.สุเทพ, อ.เมือง, เชียงใหม่ 50200', coordinates: '18.8028, 98.9664', assignedStaff: ['Pom T.'] },
+      { label: 'สาขาชลบุรี', address: '12/3 ถ.สุขุมวิบัติ, ต.แสนสุข, อ.เมือง, ชลบุรี 20130', coordinates: '13.2915, 100.9135', assignedStaff: ['Art W.'] }
+    ]
+  },
+  {
+    id: 'CUST-003',
+    name: 'PTT Public Company Limited',
+    taxId: '0105551002003',
+    contacts: [
+      { name: 'คุณมาลี ใจดี', phone: '02-333-4444', email: 'malee@ptt.co.th', role: 'Support Coordinator' },
+      { name: 'คุณธนากร แสนดี', phone: '082-999-8888', email: 'thanakorn.s@ptt.co.th', role: 'System Admin' }
+    ],
+    locations: [
+      { label: 'อาคาร PTT Digital วิภาวดี', address: 'อาคาร PTT Digital, ถ.วิภาวดีรังสิต, กรุงเทพฯ 10900', coordinates: '13.8214, 100.5583', assignedStaff: ['Krit P.', 'Ann K.'] },
+      { label: 'ศูนย์พลังงานแห่งชาติ (PTT HQ)', address: '555 ถ.วิภาวดีรังสิต, จตุจักร, กรุงเทพฯ 10900', coordinates: '13.8194, 100.5562', assignedStaff: ['Krit P.'] },
+      { label: 'สำนักงานระยอง (โรงแยกก๊าซ)', address: '108 ถ.ปกรณ์ราชพฤกษ์, ต.ห้วยโป่ง, อ.เมือง, ระยอง 21150', coordinates: '12.7214, 101.1528', assignedStaff: ['Ann K.'] },
+      { label: 'สำนักงานชลบุรี', address: '88/8 ม.4, ศรีราชา, ชลบุรี 20110', coordinates: '13.1624, 100.9312', assignedStaff: ['Art W.'] }
+    ]
+  },
+  {
+    id: 'CUST-GENERAL',
+    name: 'งานทั่วไป / ไม่มีโครงการ',
+    taxId: '0105550000000',
+    contacts: [
+      { name: 'ศูนย์บริการ NIS', phone: '02-123-4567', email: 'service@nis.co.th', role: 'Helpdesk' }
+    ],
+    locations: [
+      { label: 'NIS Office (สำนักงานใหญ่)', address: '123 อาคาร NIS, ถ.ลาดพร้าว, จตุจักร, กรุงเทพฯ 10900', coordinates: '13.8052, 100.5694', assignedStaff: [] },
+      { label: 'Remote Support (ปฏิบัติงานทางไกล)', address: 'ปฏิบัติงานผ่านอินเทอร์เน็ต', coordinates: '0, 0', assignedStaff: [] },
+      { label: 'Site ลูกค้าภายนอก (ระบุในรายละเอียด)', address: 'อ้างอิงข้อมูลในรายละเอียดงาน', coordinates: '13.7563, 100.5018', assignedStaff: [] }
+    ]
+  }
+];
+
+export const MOCK_TAX_REGISTRY = {
+  '0105556123456': {
+    name: 'บริษัท เอสซีจี เคมิคอลส์ จำกัด (มหาชน)',
+    address: '1 ถ.ปูนซิเมนต์ไทย, บางซื่อ, กรุงเทพฯ 10800',
+    contacts: [
+      { name: 'คุณอมรินทร์ สมหวัง', role: 'IT Procurement', phone: '02-586-1111', email: 'amarin@scg.co.th' }
+    ],
+    locations: [
+      { label: 'สำนักงานใหญ่ SCG บางซื่อ', address: '1 ถ.ปูนซิเมนต์ไทย, บางซื่อ, กรุงเทพฯ 10800', coordinates: '13.8038, 100.5381', assignedStaff: ['Krit P.'] },
+      { label: 'โรงงานมาบตาพุด', address: '2 ไอ-หนึ่ง ถนนไอ-หนึ่ง ต.มาบตาพุด อ.เมืองระยอง ระยอง 21150', coordinates: '12.6784, 101.1614', assignedStaff: ['Nok S.'] }
+    ]
+  },
+  '0105553987654': {
+    name: 'บริษัท โกลบอล ไฟแนนซ์ กรุ๊ป จำกัด',
+    address: 'อาคาร Global Finance Tower, ถ.สาทร, กรุงเทพฯ 10120',
+    contacts: [
+      { name: 'คุณวิลาวรรณ แก้วดี', role: 'Office Coordinator', phone: '02-679-2233', email: 'wilawan@globalfinance.com' }
+    ],
+    locations: [
+      { label: 'Global Finance Tower สาทร', address: 'อาคาร Global Finance Tower, ถ.สาทร, กรุงเทพฯ 10120', coordinates: '13.7214, 100.5283', assignedStaff: ['Nok S.', 'Art W.'] }
+    ]
+  },
+  '0105551002003': {
+    name: 'บริษัท ปตท. จำกัด (มหาชน)',
+    address: '555 ถ.วิภาวดีรังสิต, จตุจักร, กรุงเทพฯ 10900',
+    contacts: [
+      { name: 'คุณศรายุทธ ปิติ', role: 'Procurement Specialist', phone: '02-537-1234', email: 'sarayuth.p@ptt.co.th' }
+    ],
+    locations: [
+      { label: 'ศูนย์พลังงานแห่งชาติ (PTT HQ)', address: '555 ถ.วิภาวดีรังสิต, จตุจักร, กรุงเทพฯ 10900', coordinates: '13.8194, 100.5562', assignedStaff: ['Krit P.'] }
+    ]
+  }
+};
+
+export const getCustomers = () => safeGet('nis_customers', defaultCustomers);
+
+export const saveCustomers = (data) => {
+  localStorage.setItem('nis_customers', JSON.stringify(data));
+};
+
+export const getDynamicStaff = () => safeGet('nis_dynamic_staff', ['Krit P.', 'Nok S.', 'Pom T.', 'Ann K.', 'Art W.']);
+
+export const saveDynamicStaff = (data) => {
+  localStorage.setItem('nis_dynamic_staff', JSON.stringify(data));
 };

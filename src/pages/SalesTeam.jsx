@@ -92,8 +92,7 @@ export default function SalesTeam() {
                       width: 38, height: 38, borderRadius: '50%',
                       background: avatarColors[s.avatar] || '#8b5cf6',
                       color: '#fff', fontWeight: 700, fontSize: 13,
-                      display: 'flex', alignItems: 'center', justifycontent: 'center',
-                      alignItems: 'center', justifyContent: 'center',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                       margin: '0 auto 8px'
                     }}>{s.avatar}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{s.name}</div>
