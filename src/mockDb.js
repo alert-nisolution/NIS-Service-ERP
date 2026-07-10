@@ -201,7 +201,7 @@ const initDb = () => {
       const projs = JSON.parse(projStr);
       let updated = false;
       const newProjs = projs.map(p => {
-        const newTkList = p.tickets.map(t => {
+        const newTkList = (p.tickets || []).map(t => {
           if (t.id === 'TK-0092' && t.accepted === undefined) {
             updated = true;
             return { ...t, accepted: false };
@@ -220,6 +220,27 @@ const initDb = () => {
     }
   } catch (e) {
     console.error("Migration error:", e);
+  }
+
+  // Sanitize sales team avatar objects from previous versions
+  try {
+    const salesTeamStr = localStorage.getItem('nis_sales_team');
+    if (salesTeamStr) {
+      const salesTeam = JSON.parse(salesTeamStr);
+      let updated = false;
+      const cleanSalesTeam = salesTeam.map(s => {
+        if (s.avatar && typeof s.avatar === 'object') {
+          updated = true;
+          return { ...s, avatar: s.avatar.initials || 'ST' };
+        }
+        return s;
+      });
+      if (updated) {
+        localStorage.setItem('nis_sales_team', JSON.stringify(cleanSalesTeam));
+      }
+    }
+  } catch (e) {
+    console.error("Sales team sanitization error:", e);
   }
 };
 

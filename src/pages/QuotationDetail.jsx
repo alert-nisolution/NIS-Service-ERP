@@ -42,7 +42,7 @@ export default function QuotationDetail({ mode }) {
   });
 
   const [saved, setSaved] = useState(false);
-  const [selectedTags, setSelectedTags] = useState(existingQ ? existingQ.tags : ['Firewall', 'Network', 'Cable']);
+  const [selectedTags, setSelectedTags] = useState(existingQ?.tags || ['Firewall', 'Network', 'Cable']);
   const [attachments, setAttachments] = useState(['1. BOQ_TechVision_v2.3.xlsx', '2. TechVision_PO_2023_112.pdf', '3. Network_Diagram_Proposal.vsdx']);
 
   // PO Modal state

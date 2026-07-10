@@ -321,7 +321,8 @@ function TicketDetailContent({ id }) {
       type: ticketType,
       summary: workDetail,
       status: 'Closed',
-      emailSentTo: recipientEmail
+      emailSentTo: recipientEmail,
+      signatureImg: signatureImg
     });
 
     // Create automatic claim tickets if damaged is selected

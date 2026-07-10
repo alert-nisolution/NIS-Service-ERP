@@ -694,7 +694,8 @@ export default function IpadOnsiteTest() {
       type: ticketType,
       summary: workDetail,
       status: 'Closed',
-      emailSentTo: recipientEmail
+      emailSentTo: recipientEmail,
+      signatureImg: signatureImg
     });
 
     // Create automatic claims

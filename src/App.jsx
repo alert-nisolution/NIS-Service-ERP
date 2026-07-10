@@ -14,6 +14,7 @@ import SalesTeam from './pages/SalesTeam';
 import ClaimsPortal from './pages/ClaimsPortal';
 import IpadOnsiteTest from './pages/IpadOnsiteTest';
 import StaffPortal from './pages/StaffPortal';
+import ServiceReports from './pages/ServiceReports';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="claims" element={<ClaimsPortal />} />
           <Route path="ipad-onsite-test" element={<IpadOnsiteTest />} />
           <Route path="staff-portal" element={<StaffPortal />} />
+          <Route path="service-reports" element={<ServiceReports />} />
           <Route path="system-config" element={<SystemConfig />} />
         </Route>
       </Routes>

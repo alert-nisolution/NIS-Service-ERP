@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getProjects, saveProjects, getNisStock, saveNisStock, getPendingTickets, savePendingTickets, getPersonalChecklists, savePersonalChecklists, getCustomers } from '../mockDb';
 
@@ -54,6 +54,31 @@ export default function StaffPortal() {
   const [reqRequireCloseApproval, setReqRequireCloseApproval] = useState(false);
   const [customersList] = useState(() => getCustomers());
   const [pendingList, setPendingList] = useState(() => getPendingTickets());
+
+  // Personal Calendar states
+  const today = useMemo(() => new Date(), []);
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev === 0) {
+        setCurrentYear(y => y - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev === 11) {
+        setCurrentYear(y => y + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  };
 
   // Reload pending list on activeTab changes
   useEffect(() => {
@@ -208,10 +233,11 @@ export default function StaffPortal() {
   const getDynamicSitesForSelectedProject = () => {
     const selectedProjObj = projectsList.find(p => p.id === reqProject);
     if (!selectedProjObj) return ['หน้างานสำนักงานลูกค้าหลัก'];
-    const matchedCustomer = customersList.find(c => 
-      c.name.toLowerCase().includes(selectedProjObj.customer.toLowerCase()) || 
-      selectedProjObj.customer.toLowerCase().includes(c.name.toLowerCase())
-    );
+    const matchedCustomer = customersList.find(c => {
+      const cName = (c.name || '').toLowerCase();
+      const projCust = (selectedProjObj.customer || '').toLowerCase();
+      return cName.includes(projCust) || projCust.includes(cName);
+    });
     if (matchedCustomer && matchedCustomer.locations && matchedCustomer.locations.length > 0) {
       return matchedCustomer.locations.map(loc => `${loc.label} (${loc.address})`);
     }
@@ -227,8 +253,8 @@ export default function StaffPortal() {
     return selectedProjObj.tickets.filter(t => 
       t.ticketType === 'MA' || 
       t.ticketType === 'MA Onsite' || 
-      t.title.toLowerCase().includes('ma') || 
-      t.title.includes('บำรุงรักษา')
+      (t.title && t.title.toLowerCase().includes('ma')) || 
+      (t.title && t.title.includes('บำรุงรักษา'))
     );
   };
 
@@ -644,6 +670,7 @@ export default function StaffPortal() {
       <div style={{display:'flex',gap:6,marginBottom:20,background:'var(--surface)',borderRadius:10,padding:6,border:'1px solid var(--border)',width:'fit-content'}}>
         <button className={`tab-btn${activeTab==='tickets'?' active':''}`} onClick={()=>setActiveTab('tickets')}>📌 งานที่ได้รับมอบหมาย</button>
         <button className={`tab-btn${activeTab==='kanban'?' active':''}`} onClick={()=>setActiveTab('kanban')}>📋 Kanban Board ส่วนตัว</button>
+        <button className={`tab-btn${activeTab==='calendar'?' active':''}`} onClick={()=>setActiveTab('calendar')}>📅 ปฏิทินงานส่วนตัว</button>
         <button className={`tab-btn${activeTab==='checklist'?' active':''}`} onClick={()=>setActiveTab('checklist')}>✅ Checklist ส่วนตัว</button>
         <button className={`tab-btn${activeTab==='request'?' active':''}`} onClick={()=>setActiveTab('request')}>📧 ขออนุมัติเปิด Ticket</button>
         <button className={`tab-btn${activeTab==='inventory'?' active':''}`} onClick={()=>setActiveTab('inventory')}>📦 คลังพัสดุ & เบิกคืน</button>
@@ -806,6 +833,143 @@ export default function StaffPortal() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {activeTab === 'calendar' && (
+        <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              📅 ปฏิทินปฏิบัติงานส่วนตัว (My Work Schedule)
+              <span style={{ fontSize: 12, background: 'var(--primary-bg)', color: 'var(--primary)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                {selectedStaffName}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button className="btn btn-secondary btn-sm" onClick={handlePrevMonth} style={{ minWidth: 32, padding: '4px 8px' }}>◀</button>
+              <span style={{ fontSize: 14, fontWeight: 700, minWidth: 130, textAlign: 'center', color: 'var(--text)' }}>
+                {[
+                  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+                ][currentMonth]} {currentYear}
+              </span>
+              <button className="btn btn-secondary btn-sm" onClick={handleNextMonth} style={{ minWidth: 32, padding: '4px 8px' }}>▶</button>
+            </div>
+          </div>
+
+          {/* Calendar Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+            {/* Days of week header */}
+            {['อา. (Sun)', 'จ. (Mon)', 'อ. (Tue)', 'พ. (Wed)', 'พฤ. (Thu)', 'ศ. (Fri)', 'ส. (Sat)'].map((day, idx) => (
+              <div 
+                key={day} 
+                style={{ 
+                  background: 'var(--border-light)', 
+                  padding: '8px 4px', 
+                  textAlign: 'center', 
+                  fontSize: 11.5, 
+                  fontWeight: 700,
+                  color: idx === 0 ? '#ef4444' : (idx === 6 ? '#2563eb' : 'var(--text-muted)') 
+                }}
+              >
+                {day}
+              </div>
+            ))}
+            
+            {/* Days cells */}
+            {(() => {
+              const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+              const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+              const cells = [];
+              
+              // Empty cells before first day
+              for (let i = 0; i < firstDay; i++) {
+                cells.push(<div key={`empty-${i}`} style={{ background: '#f8fafc', minHeight: 90 }} />);
+              }
+              
+              // Days of month
+              for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                
+                // Filter personal tickets due on this date
+                const dayTickets = assignedTickets.filter(t => t.due === dateStr);
+                const isToday = today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === d;
+                
+                cells.push(
+                  <div 
+                    key={`day-${d}`} 
+                    style={{ 
+                      background: '#fff', 
+                      padding: 6, 
+                      minHeight: 95, 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      border: isToday ? '2px solid var(--primary)' : 'none',
+                      position: 'relative'
+                    }}
+                  >
+                    <span 
+                      style={{ 
+                        alignSelf: 'flex-end', 
+                        fontSize: 11, 
+                        fontWeight: 700, 
+                        color: isToday ? 'var(--primary)' : 'var(--text-muted)',
+                        background: isToday ? 'var(--primary-bg)' : 'none',
+                        borderRadius: '50%',
+                        width: 18,
+                        height: 18,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 4
+                      }}
+                    >
+                      {d}
+                    </span>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, overflowY: 'auto', maxHeight: 68 }}>
+                      {dayTickets.map(tk => (
+                        <Link 
+                          key={tk.id} 
+                          to={`/tickets/${tk.id}`}
+                          title={`${tk.id}: ${tk.title} (${tk.customer})`}
+                          style={{ 
+                            fontSize: 9, 
+                            padding: '3px 5px', 
+                            borderRadius: 4, 
+                            background: tk.status === 'Closed' || tk.status === 'Done' ? 'var(--secondary-bg)' : (tk.priority === 'High' ? 'var(--danger-bg)' : 'var(--info-bg)'),
+                            color: tk.status === 'Closed' || tk.status === 'Done' ? 'var(--secondary)' : (tk.priority === 'High' ? 'var(--danger)' : 'var(--info)'),
+                            border: `1px solid ${tk.status === 'Closed' || tk.status === 'Done' ? '#86efac' : (tk.priority === 'High' ? '#fca5a5' : '#bfdbfe')}`,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            textDecoration: 'none',
+                            transition: 'transform 0.1s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <span>
+                            {tk.accepted === false ? '⌛' : (tk.status === 'Closed' || tk.status === 'Done' ? '✓' : '🔧')}
+                          </span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {tk.id} {tk.title}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              return cells;
+            })()}
+          </div>
         </div>
       )}
 

@@ -409,7 +409,8 @@ export default function ServiceBoard() {
       type: tk.ticketType || 'Support',
       summary: tk.workDetail || 'ตรวจรับงาน Onsite',
       status: 'Closed',
-      emailSentTo: tk.emailSentTo || 'customer@client.com'
+      emailSentTo: tk.emailSentTo || 'customer@client.com',
+      signatureImg: tk.signatureImg
     });
 
     // 2. Create claims if damaged device was checked
