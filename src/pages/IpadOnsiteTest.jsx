@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { getProjects, saveProjects, getNisStock, getNextServiceReportNumber, addServiceReport, addClaim, addClaimNotification, getNextClaimNumber } from '../mockDb';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { getProjects, saveProjects, getNisStock, saveNisStock, getNextServiceReportNumber, addServiceReport, addClaim, addClaimNotification, getNextClaimNumber, getPendingTickets, savePendingTickets, getPersonalChecklists, savePersonalChecklists, getCustomers } from '../mockDb';
 
 /* ─────────────────── Signature Pad Component ─────────────────── */
 function SignaturePad({ onSign, width = 440, height = 130 }) {
@@ -63,6 +63,22 @@ function SignaturePad({ onSign, width = 440, height = 130 }) {
 }
 
 const btnStyle = { padding: '6px 14px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' };
+
+const STAFF_MEMBERS = [
+  { name: 'Krit P.', role: 'Senior Network & Security Engineer', avatar: 'KP', email: 'krit.p@nis.co.th', phone: '081-222-3344', username: 'krit', password: 'password123', skills: ['Firewall', 'Network', 'Server'] },
+  { name: 'Nok S.', role: 'Network & System Engineer', avatar: 'NS', email: 'nok.s@nis.co.th', phone: '085-555-6677', username: 'nok', password: 'password123', skills: ['Network', 'WiFi', 'CCTV'] },
+  { name: 'Pom T.', role: 'System & Virtualization Engineer', avatar: 'PT', email: 'pom.t@nis.co.th', phone: '089-888-9900', username: 'pom', password: 'password123', skills: ['Server', 'Windows AD', 'VMware'] },
+  { name: 'Ann K.', role: 'Software & Application Support Specialist', avatar: 'AK', email: 'ann.k@nis.co.th', phone: '084-444-5566', username: 'ann', password: 'password123', skills: ['Software', 'Monitoring'] },
+  { name: 'Art W.', role: 'Desktop & Technical Support Engineer', avatar: 'AW', email: 'art.w@nis.co.th', phone: '087-777-8899', username: 'art', password: 'password123', skills: ['PC&Notebook', 'Support'] }
+];
+
+const avatarColors = {
+  'KP': '#6366f1',
+  'NS': '#10b981',
+  'PT': '#f59e0b',
+  'AK': '#3b82f6',
+  'AW': '#8b5cf6'
+};
 
 /* ─────────────────── Install Checklist Items ─────────────────── */
 const INSTALL_CHECKS = [
@@ -343,11 +359,1164 @@ export default function IpadOnsiteTest() {
   const [selectedTicketId, setSelectedTicketId] = useState('');
   const [nisStock] = useState(() => getNisStock());
 
+  /* ── State: Authentication ── */
+  const [loggedInStaff, setLoggedInStaff] = useState(null);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  /* ── State: Staff Portal Tabs & Sub-features ── */
+  const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'kanban' | 'calendar' | 'checklist' | 'request' | 'inventory'
+  const [personalChecklists, setPersonalChecklists] = useState(() => getPersonalChecklists());
+  const [newTodoText, setNewTodoText] = useState('');
+  const [stockList, setStockList] = useState(() => getNisStock());
+  
+  // Return spares state
+  const [returnQuantities, setReturnQuantities] = useState({});
+  const [returnHistory, setReturnHistory] = useState([]);
+  
+  // Stock intake form state
+  const [addForm, setAddForm] = useState({ name: '', brand: '', model: '', sn: '', qty: 1 });
+
+  // Ticket request states
+  const [reqTitle, setReqTitle] = useState('');
+  const [reqProject, setReqProject] = useState('PRJ-GENERAL');
+  const [reqSite, setReqSite] = useState('NIS Office (สำนักงานใหญ่)');
+  const [reqType, setReqType] = useState('Support');
+  const [reqDue, setReqDue] = useState(new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
+  const [reqDetail, setReqDetail] = useState('');
+  const [reqSupportMethod, setReqSupportMethod] = useState('Onsite');
+  const [reqParentTicketId, setReqParentTicketId] = useState('');
+  const [reqRequireCloseApproval, setReqRequireCloseApproval] = useState(false);
+  const [customersList] = useState(() => getCustomers());
+  const [pendingList, setPendingList] = useState(() => getPendingTickets());
+
+  // Personal Calendar states
+  const today = useMemo(() => new Date(), []);
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+
+  /* ── Authentication Handlers ── */
+  const handleLogin = (e) => {
+    if (e) e.preventDefault();
+    const user = usernameInput.trim().toLowerCase();
+    const pass = passwordInput;
+    
+    const staff = STAFF_MEMBERS.find(s => s.username === user && s.password === pass);
+    if (staff) {
+      setLoggedInStaff(staff);
+      setLoginError('');
+      setUsernameInput('');
+      setPasswordInput('');
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { title: 'เข้าสู่ระบบสำเร็จ', message: `สวัสดีคุณ ${staff.name} ยินดีต้อนรับสู่ระบบปฏิบัติการ`, type: 'success' }
+      }));
+    } else {
+      setLoginError('❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    }
+  };
+  
+  const handleQuickLogin = (staff) => {
+    setLoggedInStaff(staff);
+    setLoginError('');
+    setUsernameInput('');
+    setPasswordInput('');
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'เข้าสู่ระบบสำเร็จ (Quick Login)', message: `สวัสดีคุณ ${staff.name} ยินดีต้อนรับสู่ระบบปฏิบัติการ`, type: 'success' }
+    }));
+  };
+  
+  const handleLogout = () => {
+    setLoggedInStaff(null);
+    setSelectedTicketId('');
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'ออกจากระบบแล้ว', message: 'คุณได้ออกจากระบบปฏิบัติการเรียบร้อยแล้ว', type: 'info' }
+    }));
+  };
+
+  /* ── Staff Portal Handlers ── */
+  const handleAddTodo = () => {
+    if (!newTodoText.trim() || !loggedInStaff) return;
+    const staffName = loggedInStaff.name;
+    const staffTodos = personalChecklists[staffName] || [];
+    const newTodo = {
+      id: Date.now(),
+      text: newTodoText.trim(),
+      done: false
+    };
+    const updated = {
+      ...personalChecklists,
+      [staffName]: [...staffTodos, newTodo]
+    };
+    setPersonalChecklists(updated);
+    savePersonalChecklists(updated);
+    setNewTodoText('');
+  };
+
+  const handleToggleTodo = (todoId) => {
+    if (!loggedInStaff) return;
+    const staffName = loggedInStaff.name;
+    const staffTodos = personalChecklists[staffName] || [];
+    const updatedTodos = staffTodos.map(todo => 
+      todo.id === todoId ? { ...todo, done: !todo.done } : todo
+    );
+    const updated = {
+      ...personalChecklists,
+      [staffName]: updatedTodos
+    };
+    setPersonalChecklists(updated);
+    savePersonalChecklists(updated);
+  };
+
+  const handleDeleteTodo = (todoId) => {
+    if (!loggedInStaff) return;
+    const staffName = loggedInStaff.name;
+    const staffTodos = personalChecklists[staffName] || [];
+    const updatedTodos = staffTodos.filter(todo => todo.id !== todoId);
+    const updated = {
+      ...personalChecklists,
+      [staffName]: updatedTodos
+    };
+    setPersonalChecklists(updated);
+    savePersonalChecklists(updated);
+  };
+
+  const handleRequestTicket = (e) => {
+    e.preventDefault();
+    if (!reqTitle.trim() || !loggedInStaff) {
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { title: 'ข้อมูลไม่ครบถ้วน', message: 'กรุณาระบุชื่อตั๋วงาน', type: 'error' }
+      }));
+      return;
+    }
+
+    const isNoOnsite = reqSupportMethod !== 'Onsite' || reqType === 'งานภายใน' || reqType === 'Lab/เรียนรู้';
+    const newRequest = {
+      id: `REQ-${Date.now()}`,
+      title: reqTitle.trim(),
+      projectId: reqProject,
+      location: reqSite,
+      ticketType: reqType,
+      due: reqDue,
+      detail: reqDetail.trim(),
+      supportMethod: reqSupportMethod,
+      parentTicketId: reqParentTicketId || '',
+      noOnsite: isNoOnsite,
+      skipSignature: false,
+      requireCloseApproval: reqRequireCloseApproval,
+      requestedBy: loggedInStaff.name,
+      status: 'Pending Approval',
+      requestTime: new Date().toLocaleString('th-TH')
+    };
+
+    const updated = [newRequest, ...getPendingTickets()];
+    savePendingTickets(updated);
+    setPendingList(updated);
+
+    // Reset Form
+    setReqTitle('');
+    setReqProject('PRJ-GENERAL');
+    setReqSite('NIS Office (สำนักงานใหญ่)');
+    setReqType('Support');
+    setReqDue(new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
+    setReqDetail('');
+    setReqSupportMethod('Onsite');
+    setReqParentTicketId('');
+    setReqRequireCloseApproval(false);
+
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'ส่งคำขอสำเร็จ', message: 'ส่งคำขอเปิด Ticket ไปยัง Service Manager แล้ว', type: 'success' }
+    }));
+  };
+
+  // Handle Add Stock
+  const handleAddStock = (e) => {
+    e.preventDefault();
+    if (!addForm.name || !addForm.brand || !addForm.model) {
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { title: 'ข้อมูลไม่ครบถ้วน', message: 'กรุณากรอกชื่อสินค้า แบรนด์ และรุ่นให้ครบถ้วน', type: 'error' }
+      }));
+      return;
+    }
+
+    const nextIdNum = stockList.length + 1;
+    const nextId = `STK-${String(nextIdNum).padStart(3, '0')}`;
+    
+    const newStockItem = {
+      id: nextId,
+      name: addForm.name,
+      brand: addForm.brand,
+      model: addForm.model,
+      sn: addForm.sn || '-',
+      qty: parseInt(addForm.qty) || 1,
+      status: 'Available'
+    };
+
+    const updatedStockList = [...stockList, newStockItem];
+    saveNisStock(updatedStockList);
+    setStockList(updatedStockList);
+
+    // Reset Form
+    setAddForm({ name: '', brand: '', model: '', sn: '', qty: 1 });
+
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'นำเข้าสินค้าสำเร็จ', message: `เพิ่ม ${newStockItem.name} จำนวน ${newStockItem.qty} ชิ้น เข้าสต็อกแล้ว`, type: 'success' }
+    }));
+  };
+
+  // Handle Return Stock
+  const handleReturnStock = (item, returnQty) => {
+    const qtyToReturn = parseInt(returnQty) || 0;
+    if (qtyToReturn <= 0) {
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { title: 'ข้อมูลไม่ถูกต้อง', message: 'กรุณาระบุจำนวนที่จะนำคืนที่มากกว่า 0', type: 'error' }
+      }));
+      return;
+    }
+
+    if (qtyToReturn > item.qtyOut) {
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { title: 'จำนวนไม่ถูกต้อง', message: 'ไม่สามารถคืนของมากกว่าจำนวนที่เบิกออกไปได้', type: 'error' }
+      }));
+      return;
+    }
+
+    // 1. Increment Warehouse Stock
+    const currentStock = getNisStock();
+    const updatedStock = currentStock.map(s => {
+      if (s.id === item.id) {
+        const newQty = s.qty + qtyToReturn;
+        return {
+          ...s,
+          qty: newQty,
+          status: 'Available'
+        };
+      }
+      return s;
+    });
+    saveNisStock(updatedStock);
+    setStockList(updatedStock);
+
+    // 2. Decrement from Ticket's checkedOutItems
+    const currentProjects = getProjects();
+    const updatedProjects = currentProjects.map(p => {
+      const hasTk = (p.tickets || []).find(t => t.id === item.ticketId);
+      if (hasTk) {
+        return {
+          ...p,
+          tickets: p.tickets.map(t => {
+            if (t.id === item.ticketId) {
+              const updatedCheckedOut = (t.checkedOutItems || [])
+                .map(ci => {
+                  if (ci.id === item.id) {
+                    return {
+                      ...ci,
+                      qtyOut: ci.qtyOut - qtyToReturn
+                    };
+                  }
+                  return ci;
+                })
+                .filter(ci => ci.qtyOut > 0);
+
+              return {
+                ...t,
+                checkedOutItems: updatedCheckedOut,
+                stockDeducted: updatedCheckedOut.length > 0
+              };
+            }
+            return t;
+          })
+        };
+      }
+      return p;
+    });
+    saveProjects(updatedProjects);
+    setProjectsList(updatedProjects);
+
+    // 3. Append to return log
+    const returnEntry = {
+      id: Date.now(),
+      itemName: item.name,
+      brand: item.brand,
+      model: item.model,
+      qty: qtyToReturn,
+      ticketId: item.ticketId,
+      time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+    };
+    setReturnHistory(prev => [returnEntry, ...prev]);
+
+    // Reset return input
+    setReturnQuantities(prev => ({
+      ...prev,
+      [`${item.id}-${item.ticketId}`]: ''
+    }));
+
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { 
+        title: 'คืนของสำเร็จ', 
+        message: `คืนของ ${item.name} จำนวน ${qtyToReturn} ชิ้น จากตั๋ว ${item.ticketId} เข้าคลังแล้ว`, 
+        type: 'success' 
+      }
+    }));
+  };
+
+  const handleAcceptTicketFromStaff = (ticketId) => {
+    const currentProjects = getProjects();
+    const updatedProjects = currentProjects.map(p => {
+      return {
+        ...p,
+        tickets: p.tickets.map(t => {
+          if (t.id === ticketId) {
+            return {
+              ...t,
+              accepted: true,
+              status: 'In Progress'
+            };
+          }
+          return t;
+        })
+      };
+    });
+    saveProjects(updatedProjects);
+    setProjectsList(updatedProjects);
+
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { 
+        title: 'ตอบรับงานสำเร็จ', 
+        message: `คุณได้ตอบรับงาน ${ticketId} เรียบร้อยแล้ว สถานะถูกอัปเดตเป็น In Progress`, 
+        type: 'success' 
+      }
+    }));
+  };
+
+  const handleRejectTicketFromStaff = (ticketId) => {
+    const currentProjects = getProjects();
+    const updatedProjects = currentProjects.map(p => {
+      return {
+        ...p,
+        tickets: p.tickets.map(t => {
+          if (t.id === ticketId) {
+            return {
+              ...t,
+              assignee: '-',
+              accepted: undefined,
+              status: 'Open'
+            };
+          }
+          return t;
+        })
+      };
+    });
+    saveProjects(updatedProjects);
+    setProjectsList(updatedProjects);
+
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { 
+        title: 'ปฏิเสธงานสำเร็จ', 
+        message: `ปฏิเสธงาน ${ticketId} และส่งตั๋วงานคืนระบบเรียบร้อยแล้ว`, 
+        type: 'warning' 
+      }
+    }));
+  };
+
+  const handleUpdateTicketStatus = (ticketId, newStatus) => {
+    const currentProjects = getProjects();
+    const updatedProjects = currentProjects.map(p => {
+      const hasTk = p.tickets.find(t => t.id === ticketId);
+      if (hasTk) {
+        return {
+          ...p,
+          tickets: p.tickets.map(t => {
+            if (t.id === ticketId) {
+              const acceptedVal = newStatus === 'Open' ? false : (newStatus === 'In Progress' ? true : t.accepted);
+              return {
+                ...t,
+                status: newStatus,
+                accepted: acceptedVal
+              };
+            }
+            return t;
+          })
+        };
+      }
+      return p;
+    });
+
+    setProjectsList(updatedProjects);
+    saveProjects(updatedProjects);
+    window.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { title: 'เปลี่ยนสถานะสำเร็จ', message: `อัปเดตสถานะตั๋ว ${ticketId} เป็น ${newStatus} แล้ว`, type: 'success' }
+    }));
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev === 0) {
+        setCurrentYear(y => y - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev === 11) {
+        setCurrentYear(y => y + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  };
+
+  /* ── Helper Render: Login Screen ── */
+  const renderLoginScreen = () => {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        minHeight: '650px',
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #111827 100%)',
+        fontFamily: 'Prompt, sans-serif',
+        color: '#fff',
+        padding: '20px',
+        borderRadius: '20px',
+        boxSizing: 'border-box'
+      }}>
+        {/* iPad Lockscreen Date & Clock */}
+        <div style={{ textAlign: 'center', marginBottom: 20, textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
+          <div style={{ fontSize: 36, fontWeight: 700, fontFamily: 'Kanit, sans-serif', letterSpacing: 0.5 }}>
+            {new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.
+          </div>
+          <div style={{ fontSize: 11.5, color: '#a5b4fc', marginTop: 2, fontWeight: 500 }}>
+            {new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
+        </div>
+
+        {/* Login Card */}
+        <div style={{
+          width: '100%',
+          maxWidth: '360px',
+          background: 'rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          borderRadius: '20px',
+          padding: '24px 20px',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#c084fc', fontFamily: 'Kanit, sans-serif' }}>NIS ONSITE SYSTEM</div>
+            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>เข้าสู่ระบบปฏิบัติงานสำหรับเจ้าหน้าที่ (Staff Login)</div>
+          </div>
+
+          {loginError && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              padding: '8px',
+              fontSize: '11px',
+              color: '#fca5a5',
+              marginBottom: 12,
+              textAlign: 'center'
+            }}>
+              {loginError}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <label style={{ fontSize: '10.5px', fontWeight: 600, color: '#a5b4fc', display: 'block', marginBottom: 4 }}>ชื่อผู้ใช้งาน (Username)</label>
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={e => setUsernameInput(e.target.value)}
+                placeholder="เช่น krit, nok, pom..."
+                required
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(0,0,0,0.2)',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontFamily: 'Prompt, sans-serif',
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '10.5px', fontWeight: 600, color: '#a5b4fc', display: 'block', marginBottom: 4 }}>รหัสผ่าน (Password)</label>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={e => setPasswordInput(e.target.value)}
+                placeholder="ป้อนรหัสผ่าน..."
+                required
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(0,0,0,0.2)',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontFamily: 'Prompt, sans-serif',
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              style={{
+                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '9px 0',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'Prompt, sans-serif',
+                marginTop: 4,
+                boxShadow: '0 8px 12px -3px rgba(124, 58, 237, 0.3)'
+              }}
+            >
+              🔐 เข้าสู่ระบบ (Sign In)
+            </button>
+          </form>
+        </div>
+
+        {/* Quick Login Test Accounts Helper */}
+        <div style={{
+          width: '100%',
+          maxWidth: '360px',
+          background: 'rgba(15, 23, 42, 0.4)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '14px',
+          padding: '12px 14px',
+          marginTop: 14,
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#c084fc', marginBottom: 8, textAlign: 'center', letterSpacing: 0.5 }}>
+            🔑 บัญชีทดสอบด่วน (Quick Test Accounts)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {STAFF_MEMBERS.map(staff => (
+              <button
+                key={staff.username}
+                onClick={() => handleQuickLogin(staff)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  color: '#e2e8f0',
+                  fontSize: '10.5px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: avatarColors[staff.avatar] || '#6366f1',
+                    color: '#fff', fontSize: '8px', fontWeight: 800,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>{staff.avatar}</span>
+                  <div>
+                    <strong>{staff.name}</strong>
+                  </div>
+                </div>
+                <div style={{ fontSize: '9px', color: '#a5b4fc', fontFamily: 'monospace' }}>
+                  {staff.username} / {staff.password}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ── Helper Render: Staff Dashboard ── */
+  const renderStaffDashboard = () => {
+    return (
+      <div style={{ fontFamily: 'Prompt, sans-serif' }}>
+        {/* Profile Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, background: '#fff', padding: '10px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: avatarColors[loggedInStaff.avatar] || '#6366f1',
+              color: '#fff', fontWeight: 800, fontSize: 13,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>{loggedInStaff.avatar}</div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>{loggedInStaff.name}</div>
+              <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>{loggedInStaff.role}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 9.5, background: 'linear-gradient(135deg,#1e40af,#7c3aed)', color: '#fff', padding: '3px 8px', borderRadius: 20, fontWeight: 700, fontFamily: 'Kanit, sans-serif' }}>STAFF PORTAL</span>
+            <button onClick={handleLogout} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'Prompt, sans-serif' }}>
+              Logout ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Pending Accept Notification Banner */}
+        {pendingAcceptTickets.length > 0 && (
+          <div style={{ border: '1.5px solid #fca5a5', background: '#fef2f2', borderRadius: '10px', padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ fontWeight: 800, fontSize: '11px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              🔔 มีตั๋วงานมอบหมายใหม่! (New Assignment)
+            </div>
+            <div style={{ fontSize: '10px', color: '#7f1d1d' }}>
+              โปรดตรวจสอบและกดตอบรับ (Accept) ในแท็บรายการงานเพื่อยืนยันปฏิบัติงาน
+            </div>
+          </div>
+        )}
+
+        {/* Stats Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+          {[
+            { label: 'ตั๋วงานทั้งหมด', value: assignedTickets.length, desc: 'งานในความดูแล', icon: '📋', color: '#6366f1' },
+            { label: 'งานรอตอบรับ', value: pendingAcceptTickets.length, desc: 'งานใหม่รอ Accept', icon: '⌛', color: pendingAcceptTickets.length > 0 ? '#ef4444' : '#64748b', pulse: pendingAcceptTickets.length > 0 },
+            { label: 'กำลังดำเนินการ', value: inProgressTicketsCount, desc: 'Onsite / ทำงาน', icon: '🔧', color: '#f59e0b' },
+            { label: 'งานเกินกำหนด', value: overdueTickets.length, desc: 'เลยดิวส่งมอบ', icon: '⚠️', color: overdueTickets.length > 0 ? '#ef4444' : '#10b981', pulse: overdueTickets.length > 0 },
+            { label: 'งานที่ปิดแล้ว', value: closedTicketsCount, desc: 'MTD Completed', icon: '✓', color: '#10b981' },
+            { label: 'อุปกรณ์ที่เบิก', value: staffWithdrawnItems.reduce((acc, curr) => acc + curr.qtyOut, 0) + ' ชิ้น', desc: 'ยอดค้างติดตัว', icon: '📦', color: '#8b5cf6' }
+          ].map((stat, idx) => (
+            <div key={idx} style={{
+              padding: '8px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: '#fff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              position: 'relative',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+            }}>
+              {stat.pulse && (
+                <span className="pulse-badge" style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
+              )}
+              <div style={{
+                width: 28, height: 28, borderRadius: 6,
+                background: stat.color + '12', color: stat.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 700, flexShrink: 0
+              }}>
+                {stat.icon}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', fontFamily: 'Kanit, sans-serif', lineHeight: 1.1 }}>{stat.value}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: '#475569', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{stat.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tab Selector */}
+        <div style={{
+          display: 'flex',
+          gap: 2,
+          marginBottom: 12,
+          background: '#e2e8f0',
+          borderRadius: 8,
+          padding: 2,
+          overflowX: 'auto',
+          whiteSpace: 'nowrap'
+        }}>
+          {[
+            { id: 'tickets', label: '📌 รายการงาน' },
+            { id: 'kanban', label: '📋 บอร์ดคันบัง' },
+            { id: 'calendar', label: '📅 ปฏิทินงาน' },
+            { id: 'checklist', label: '✅ โน้ตช่วยจำ' },
+            { id: 'request', label: '📧 ขอเปิดตั๋ว' },
+            { id: 'inventory', label: '📦 คลังสินค้า' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                flex: 1,
+                padding: '5px 8px',
+                borderRadius: 6,
+                border: 'none',
+                fontSize: '10.5px',
+                fontWeight: 700,
+                fontFamily: 'Prompt, sans-serif',
+                cursor: 'pointer',
+                background: activeTab === tab.id ? '#fff' : 'transparent',
+                color: activeTab === tab.id ? '#1e40af' : '#475569',
+                boxShadow: activeTab === tab.id ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.1s'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Contents */}
+        <div style={{ minHeight: 350 }}>
+          {activeTab === 'tickets' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {assignedTickets.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94a3b8', fontSize: '11px', fontStyle: 'italic', background: '#fff', borderRadius: 10, border: '1px dashed #cbd5e1' }}>
+                  ไม่มีตั๋วงานที่ได้รับมอบหมายในขณะนี้
+                </div>
+              ) : (
+                assignedTickets.map(tk => {
+                  let priorityColor = '#64748b';
+                  if (tk.priority === 'Critical') priorityColor = '#ef4444';
+                  else if (tk.priority === 'High') priorityColor = '#f97316';
+                  else if (tk.priority === 'Medium') priorityColor = '#3b82f6';
+                  
+                  let statusBg = '#f1f5f9';
+                  let statusText = '#475569';
+                  if (tk.accepted === false) { statusBg = '#fee2e2'; statusText = '#ef4444'; }
+                  else if (tk.status === 'New') { statusBg = '#eff6ff'; statusText = '#2563eb'; }
+                  else if (tk.status === 'In Progress') { statusBg = '#fffbeb'; statusText = '#d97706'; }
+                  else if (tk.status === 'Resolved' || tk.status === 'Done') { statusBg = '#f0fdf4'; statusText = '#16a34a'; }
+                  else if (tk.status === 'Closed') { statusBg = '#f8fafc'; statusText = '#64748b'; }
+
+                  return (
+                    <div key={tk.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, fontSize: '11.5px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 800, color: '#1e40af' }}>{tk.id}</span>
+                          <span style={{ background: priorityColor + '12', color: priorityColor, padding: '1px 4px', borderRadius: 3, fontSize: '8.5px', fontWeight: 700 }}>{tk.priority}</span>
+                        </div>
+                        <span style={{ background: statusBg, color: statusText, padding: '1.5px 5px', borderRadius: 3, fontSize: '9px', fontWeight: 700 }}>
+                          {tk.accepted === false ? 'รอตอบรับ' : tk.status}
+                        </span>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '11.5px', color: '#0f172a', marginBottom: 2 }}>{tk.title}</div>
+                      <div style={{ fontSize: '10px', color: '#475569', marginBottom: 1 }}><strong>ลูกค้า:</strong> {tk.customer}</div>
+                      <div style={{ fontSize: '9.5px', color: '#64748b', marginBottom: 6 }}><strong>ดิวส่งมอบ:</strong> {tk.due}</div>
+                      
+                      {tk.checkedOutItems && tk.checkedOutItems.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 6 }}>
+                          {tk.checkedOutItems.map(item => (
+                            <span key={item.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 3, padding: '1px 3px', fontSize: '8.5px', color: '#475569' }}>
+                              📦 {item.model} x{item.qtyOut}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 6, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                        {tk.accepted === false ? (
+                          <>
+                            <button onClick={() => handleRejectTicketFromStaff(tk.id)} style={{ border: '1px solid #fca5a5', background: 'none', color: '#dc2626', borderRadius: 4, padding: '3px 8px', fontSize: '9.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                              ปฏิเสธ
+                            </button>
+                            <button onClick={() => handleAcceptTicketFromStaff(tk.id)} style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, padding: '3px 10px', fontSize: '9.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                              ✓ Accept รับงาน
+                            </button>
+                          </>
+                        ) : (
+                          <button onClick={() => setSelectedTicketId(tk.id)} style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: '10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                            เริ่มบันทึก Onsite Report 🛠️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {activeTab === 'kanban' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+              {[
+                { id: 'open', title: 'งานใหม่', color: '#6366f1', filter: t => t.accepted === false || t.status === 'Open' },
+                { id: 'inprogress', title: 'กำลังทำ', color: '#f59e0b', filter: t => t.status === 'In Progress' && t.accepted !== false },
+                { id: 'review', title: 'รอตรวจ', color: '#3b82f6', filter: t => t.status === 'Pending' || t.status === 'Waiting Close Approval' },
+                { id: 'closed', title: 'เสร็จสิ้น', color: '#10b981', filter: t => t.status === 'Closed' || t.status === 'Done' || t.status === 'Resolved' }
+              ].map(col => {
+                const colTickets = assignedTickets.filter(col.filter);
+                return (
+                  <div key={col.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: 4, display: 'flex', flexDirection: 'column', minHeight: 350 }}>
+                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: col.color, borderBottom: `1.5px solid ${col.color}`, paddingBottom: 2, marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{col.title}</span>
+                      <span style={{ background: col.color + '12', padding: '0 3px', borderRadius: 3 }}>{colTickets.length}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', flex: 1 }}>
+                      {colTickets.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '15px 0', color: '#94a3b8', fontSize: '8.5px', fontStyle: 'italic' }}>ไม่มีงาน</div>
+                      ) : (
+                        colTickets.map(tk => (
+                          <div key={tk.id} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 4, padding: 4, boxShadow: '0 1px 2px rgba(0,0,0,0.01)' }}>
+                            <div style={{ fontWeight: 800, fontSize: '8.5px', color: '#1e40af', marginBottom: 1 }}>{tk.id}</div>
+                            <div style={{ fontWeight: 700, fontSize: '9.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tk.title}</div>
+                            <div style={{ fontSize: '8px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tk.customer}</div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4, borderTop: '1px solid #f1f5f9', paddingTop: 3 }}>
+                              <button onClick={() => setSelectedTicketId(tk.id)} style={{ border: 'none', background: '#eff6ff', color: '#1e40af', padding: '2px 0', borderRadius: 3, fontSize: '8px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                                บันทึก Onsite 🛠️
+                              </button>
+                              {col.id === 'open' && (
+                                <button onClick={() => handleUpdateTicketStatus(tk.id, 'In Progress')} style={{ border: 'none', background: '#ecfdf5', color: '#047857', padding: '1.5px 0', borderRadius: 3, fontSize: '7.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                                  Accept & Start
+                                </button>
+                              )}
+                              {col.id === 'inprogress' && (
+                                <button onClick={() => handleUpdateTicketStatus(tk.id, 'Pending')} style={{ border: 'none', background: '#eff6ff', color: '#1d4ed8', padding: '1.5px 0', borderRadius: 3, fontSize: '7.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                                  ส่งตรวจสอบ
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab === 'calendar' && (
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#0f172a' }}>📅 ปฏิทินงานรายเดือน</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button onClick={handlePrevMonth} style={{ background: '#f1f5f9', border: 'none', borderRadius: 4, padding: '1px 5px', cursor: 'pointer', fontSize: '8px' }}>◀</button>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569', minWidth: 70, textAlign: 'center' }}>
+                    {['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][currentMonth]} {currentYear}
+                  </span>
+                  <button onClick={handleNextMonth} style={{ background: '#f1f5f9', border: 'none', borderRadius: 4, padding: '1px 5px', cursor: 'pointer', fontSize: '8px' }}>▶</button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: '#cbd5e1', border: '1px solid #cbd5e1', borderRadius: 4, overflow: 'hidden' }}>
+                {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((day, idx) => (
+                  <div key={day} style={{ background: '#f1f5f9', padding: '3px 0', textAlign: 'center', fontSize: '9px', fontWeight: 700, color: idx === 0 ? '#ef4444' : (idx === 6 ? '#2563eb' : '#475569') }}>
+                    {day}
+                  </div>
+                ))}
+                
+                {(() => {
+                  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                  const cells = [];
+                  
+                  for (let i = 0; i < firstDay; i++) {
+                    cells.push(<div key={`empty-${i}`} style={{ background: '#f8fafc', minHeight: 40 }} />);
+                  }
+                  
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const dayTickets = assignedTickets.filter(t => t.due === dateStr);
+                    const isToday = new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonth && new Date().getDate() === d;
+                    
+                    cells.push(
+                      <div key={`day-${d}`} style={{ background: '#fff', padding: 2, minHeight: 42, display: 'flex', flexDirection: 'column', border: isToday ? '1.5px solid #2563eb' : 'none' }}>
+                        <span style={{ alignSelf: 'flex-end', fontSize: '8.5px', fontWeight: 700, color: isToday ? '#2563eb' : '#64748b' }}>{d}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, overflowY: 'auto', maxHeight: 26 }}>
+                          {dayTickets.map(tk => (
+                            <div key={tk.id} onClick={() => setSelectedTicketId(tk.id)} style={{ fontSize: '7px', background: tk.priority === 'High' ? '#fee2e2' : '#eff6ff', color: tk.priority === 'High' ? '#ef4444' : '#2563eb', padding: '0.5px 1px', borderRadius: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, cursor: 'pointer' }}>
+                              {tk.id}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return cells;
+                })()}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'checklist' && (
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 10 }}>
+              <div style={{ fontWeight: 800, fontSize: '11px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: 4, marginBottom: 8 }}>
+                ✅ โน้ตบันทึกช่วยจำส่วนตัว (Personal Notes)
+              </div>
+              
+              <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                <input type="text" value={newTodoText} onChange={e => setNewTodoText(e.target.value)} placeholder="พิมพ์บันทึกช่วยจำ..." onKeyDown={e => { if (e.key === 'Enter') handleAddTodo(); }}
+                  style={{ flex: 1, fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                <button onClick={handleAddTodo} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                  เพิ่ม
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
+                {(personalChecklists[loggedInStaff.name] || []).length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px 10px', color: '#94a3b8', fontSize: '10.5px', fontStyle: 'italic', border: '1px dashed #e2e8f0', borderRadius: 6 }}>
+                    ไม่มีรายการบันทึกช่วยจำ
+                  </div>
+                ) : (
+                  (personalChecklists[loggedInStaff.name] || []).map(todo => (
+                    <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                      <input type="checkbox" checked={todo.done} onChange={() => handleToggleTodo(todo.id)} style={{ width: 'auto', accentColor: '#1e40af', cursor: 'pointer' }} />
+                      <span style={{ flex: 1, fontSize: '11px', textDecoration: todo.done ? 'line-through' : '', color: todo.done ? '#94a3b8' : '#334155' }}>
+                        {todo.text}
+                      </span>
+                      <button onClick={() => handleDeleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '10px', padding: 2 }}>✕</button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'request' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+              {/* Form */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 10 }}>
+                <div style={{ fontWeight: 800, fontSize: '11px', color: '#0f172a', marginBottom: 8, borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>📧 ขอเปิด Ticket ใหม่</div>
+                <form onSubmit={handleRequestTicket} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div>
+                    <label style={{ fontSize: '9px', color: '#64748b' }}>ชื่องาน / หัวข้อ</label>
+                    <input type="text" required value={reqTitle} onChange={e => setReqTitle(e.target.value)} placeholder="เช่น Onsite PM เพิ่มเติม..." style={{ width: '100%', fontSize: '10px', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', boxSizing: 'border-box', fontFamily: 'Prompt, sans-serif' }} />
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                    <div>
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>โครงการ</label>
+                      <select value={reqProject} onChange={e => {
+                        const nextProj = e.target.value;
+                        setReqProject(nextProj);
+                        const selectedProjObj = projectsList.find(p => p.id === nextProj);
+                        let sites = ['หน้างานสำนักงานลูกค้าหลัก'];
+                        if (selectedProjObj) {
+                          const matchedCustomer = customersList.find(c => 
+                            c.name.toLowerCase().includes(selectedProjObj.customer.toLowerCase()) || 
+                            selectedProjObj.customer.toLowerCase().includes(c.name.toLowerCase())
+                          );
+                          if (matchedCustomer && matchedCustomer.locations && matchedCustomer.locations.length > 0) {
+                            sites = matchedCustomer.locations.map(loc => `${loc.label} (${loc.address})`);
+                          } else {
+                            sites = [selectedProjObj.location || 'หน้างานสำนักงานลูกค้าหลัก'];
+                          }
+                        }
+                        setReqSite(sites[0]);
+                        setReqParentTicketId('');
+                      }} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
+                        {projectsList.map(p => (
+                          <option key={p.id} value={p.id}>{p.name.slice(0, 15)}...</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>สถานที่ (Site)</label>
+                      <select value={reqSite} onChange={e => setReqSite(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
+                        {dynamicSites.map(s => (
+                          <option key={s} value={s}>{s.split(' ')[0]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                    <div>
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>ประเภทตั๋ว</label>
+                      <select value={reqType} onChange={e => setReqType(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
+                        <option value="Install">Install (ติดตั้ง)</option>
+                        <option value="MA">MA (บำรุงรักษา)</option>
+                        <option value="PM">PM (ตรวจสอบ)</option>
+                        <option value="Support">Support</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>กำหนดเสร็จ</label>
+                      <input type="date" required value={reqDue} onChange={e => setReqDue(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '3px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '9px', color: '#64748b' }}>วิธีการ Support</label>
+                    <select value={reqSupportMethod} onChange={e => setReqSupportMethod(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
+                      <option value="Onsite">Onsite</option>
+                      <option value="Remote">Remote</option>
+                      <option value="Telephone">Telephone</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <input type="checkbox" id="reqRequireCloseApproval" checked={reqRequireCloseApproval} onChange={e => setReqRequireCloseApproval(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                    <label htmlFor="reqRequireCloseApproval" style={{ fontSize: '9px', cursor: 'pointer', margin: 0 }}>ขออนุมัติปิดตั๋วโดย SM ก่อนปิดงาน</label>
+                  </div>
+
+                  <button type="submit" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 0', fontSize: '10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif', marginTop: 2 }}>
+                    ✓ ส่งคำขอเปิด Ticket
+                  </button>
+                </form>
+              </div>
+
+              {/* Status List */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontWeight: 800, fontSize: '11px', color: '#0f172a', marginBottom: 6, borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>📋 สถานะคำขอ</div>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220 }}>
+                  {pendingList.filter(r => r.requestedBy === loggedInStaff.name).length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '20px 10px', color: '#94a3b8', fontSize: '9.5px', fontStyle: 'italic' }}>
+                      ไม่มีคำขอเปิดตั๋ว
+                    </div>
+                  ) : (
+                    pendingList.filter(r => r.requestedBy === loggedInStaff.name).map(req => (
+                      <div key={req.id} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 4, padding: 4, fontSize: '9px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                          <span>{req.title.slice(0, 12)}...</span>
+                          <span style={{ color: '#2563eb' }}>{req.status.split(' ')[0]}</span>
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: '8px', marginTop: 1 }}>
+                          ประเภท: {req.ticketType} | วิธี: {req.supportMethod}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'inventory' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 6 }}>
+              {/* Warehouse stock */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontWeight: 800, fontSize: '10.5px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: 4, marginBottom: 6 }}>
+                  📦 อุปกรณ์ในคลัง NIS Warehouse
+                </div>
+                <div style={{ overflowY: 'auto', flex: 1, maxHeight: 230 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '4px 2px' }}>สินค้า</th>
+                        <th style={{ padding: '4px 2px' }}>รุ่น</th>
+                        <th style={{ padding: '4px 2px', textAlign: 'center' }}>คงคลัง</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockList.map(s => (
+                        <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '4px 2px', fontWeight: 700 }}>{s.name}</td>
+                          <td style={{ padding: '4px 2px', fontFamily: 'monospace' }}>{s.model}</td>
+                          <td style={{ padding: '4px 2px', textAlign: 'center', fontWeight: 700 }}>{s.qty}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Spares Returns and Intake */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {/* Returns */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8 }}>
+                  <div style={{ fontWeight: 800, fontSize: '10.5px', color: '#0f172a', marginBottom: 6, borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>
+                    ↩️ ค้างคืนคลัง
+                  </div>
+                  
+                  <div style={{ maxHeight: 110, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {staffWithdrawnItems.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '10px 0', fontSize: '9.5px', color: '#94a3b8', fontStyle: 'italic' }}>
+                        ไม่มีของค้างส่งคืน
+                      </div>
+                    ) : (
+                      staffWithdrawnItems.map(item => {
+                        const key = `${item.id}-${item.ticketId}`;
+                        const inputQty = returnQuantities[key] || '';
+                        return (
+                          <div key={key} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 4, padding: 4, fontSize: '9px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                              <span style={{ color: '#2563eb' }}>{item.ticketId}</span>
+                              <span>เบิก: {item.qtyOut}</span>
+                            </div>
+                            <div style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.model}</div>
+                            
+                            <div style={{ display: 'flex', gap: 2, marginTop: 2, alignItems: 'center' }}>
+                              <input
+                                type="number"
+                                placeholder="คืน..."
+                                min="1"
+                                max={item.qtyOut}
+                                value={inputQty}
+                                onChange={e => setReturnQuantities(prev => ({
+                                  ...prev,
+                                  [key]: Math.max(1, Math.min(item.qtyOut, parseInt(e.target.value) || ''))
+                                }))}
+                                style={{ width: 40, padding: '2px', fontSize: '8.5px', border: '1px solid #cbd5e1', borderRadius: 3 }}
+                              />
+                              <button
+                                onClick={() => handleReturnStock(item, inputQty)}
+                                disabled={!inputQty}
+                                style={{ flex: 1, padding: '3px', fontSize: '8.5px', background: '#475569', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}
+                              >
+                                คืนคลัง
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Intake */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8 }}>
+                  <form onSubmit={handleAddStock} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <input placeholder="ชื่ออุปกรณ์" value={addForm.name} onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))} required
+                      style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                      <input placeholder="แบรนด์" value={addForm.brand} onChange={e => setAddForm(prev => ({ ...prev, brand: e.target.value }))} required
+                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                      <input placeholder="รุ่น" value={addForm.model} onChange={e => setAddForm(prev => ({ ...prev, model: e.target.value }))} required
+                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 2 }}>
+                      <input placeholder="S/N" value={addForm.sn} onChange={e => setAddForm(prev => ({ ...prev, sn: e.target.value }))}
+                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                      <input type="number" min="1" placeholder="จำนวน" value={addForm.qty} onChange={e => setAddForm(prev => ({ ...prev, qty: Math.max(1, parseInt(e.target.value) || 1) }))} required
+                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                    </div>
+                    <button type="submit" style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 3, padding: '4px 0', fontSize: '8.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                      📥 นำเข้าสต็อก
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   /* ── Derived: All active tickets ── */
   const allTickets = projectsList.flatMap(p =>
     (p.tickets || []).map(t => ({ ...t, projectId: p.id, projectName: p.name, customer: p.customer, location: t.location || p.location || '', contact: p.contact || {}, salesPM: p.salesPM || {}, engineer: p.engineer || {}, projectType: p.type, tags: p.tags || [] }))
   );
-  const activeTickets = allTickets.filter(t => t.status !== 'Closed' && t.status !== 'Done');
+  
+  const assignedTickets = useMemo(() => {
+    if (!loggedInStaff) return [];
+    return allTickets.filter(t => t.assignee === loggedInStaff.name);
+  }, [allTickets, loggedInStaff]);
+
+  const activeTickets = useMemo(() => {
+    return assignedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Done' && t.status !== 'Resolved');
+  }, [assignedTickets]);
+
   const matchedTicket = allTickets.find(t => t.id === selectedTicketId) || null;
 
   const resolveTicketType = useCallback(() => {
@@ -822,6 +1991,28 @@ export default function IpadOnsiteTest() {
     <div>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800;900&family=Prompt:wght@300;400;500;600;700&display=swap');
+        .main-grid {
+          display: grid;
+          grid-template-columns: 1fr 330px;
+          gap: 20px;
+          align-items: start;
+        }
+        .sidebar-container {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          position: sticky;
+          top: 16px;
+        }
+        @media (max-width: 1024px) {
+          .main-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .sidebar-container {
+            position: static !important;
+            width: 100% !important;
+          }
+        }
         .ipad-outer{width:700px;min-height:960px;background:linear-gradient(145deg,#1a1a2e 0%,#0f0f1a 40%,#16213e 100%);border-radius:44px;padding:18px;box-sizing:border-box;position:relative;box-shadow:0 40px 80px -20px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06),inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.3)}
         .ipad-outer::before{content:'';position:absolute;inset:2px;border-radius:43px;background:linear-gradient(180deg,rgba(255,255,255,0.04) 0%,transparent 30%);pointer-events:none;z-index:1}
         .ipad-screen{width:100%;height:100%;background:#f8fafc;border-radius:26px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:inset 0 0 30px rgba(0,0,0,0.03)}
@@ -854,7 +2045,7 @@ export default function IpadOnsiteTest() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 20, alignItems: 'start' }}>
+      <div className="main-grid">
 
         {/* ═══ LEFT: iPad Frame ═══ */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
@@ -879,32 +2070,37 @@ export default function IpadOnsiteTest() {
 
               {/* Scrollable Content */}
               <div className="ipad-content">
-                {/* App Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <div style={{ fontSize: 17, fontWeight: 900, color: '#1e40af', letterSpacing: -0.5, fontFamily: 'Kanit, sans-serif' }}>NIS ONSITE REPORT</div>
-                  <div style={{ fontSize: 9.5, background: 'linear-gradient(135deg,#1e40af,#7c3aed)', color: '#fff', padding: '3px 10px', borderRadius: 20, fontWeight: 700, fontFamily: 'Kanit, sans-serif' }}>iPAD AIR PORTAL</div>
-                </div>
-
-                {/* ── Ticket Selection ── */}
-                <Card>
-                  <SectionTitle icon="🎫">เลือก Ticket งาน</SectionTitle>
-                  <select value={selectedTicketId} onChange={e => setSelectedTicketId(e.target.value)}
-                    style={{ width: '100%', fontSize: 11.5, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'Prompt, sans-serif', background: '#fff', color: '#0f172a' }}>
-                    <option value="">-- แตะเพื่อเลือก Ticket --</option>
-                    {activeTickets.map(t => (
-                      <option key={t.id} value={t.id}>{t.id} — {t.title} ({t.customer})</option>
-                    ))}
-                  </select>
-                  {matchedTicket && (
-                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={typeBadge(ticketType)}>{ticketType}</span>
-                      <span style={{ fontSize: 11, color: '#64748b' }}>{matchedTicket.id}</span>
-                    </div>
-                  )}
-                </Card>
-
-                {matchedTicket ? (
+                {!loggedInStaff ? renderLoginScreen() : (!selectedTicketId ? renderStaffDashboard() : (
                   <>
+                    {/* Back Header */}
+                    <div style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, margin: '-16px -16px 14px -16px', position: 'sticky', top: -16, zIndex: 100 }}>
+                      <button onClick={() => setSelectedTicketId('')} style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontSize: '10.5px', fontWeight: 700, fontFamily: 'Prompt, sans-serif' }}>
+                        ◀ กลับหน้าหลัก Staff Portal
+                      </button>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          งาน: {matchedTicket.id} — {matchedTicket.title}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Ticket Selection Dropdown inside form for quick switching ── */}
+                    <Card>
+                      <SectionTitle icon="🎫">สลับ Ticket งานอื่น</SectionTitle>
+                      <select value={selectedTicketId} onChange={e => setSelectedTicketId(e.target.value)}
+                        style={{ width: '100%', fontSize: 11.5, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'Prompt, sans-serif', background: '#fff', color: '#0f172a' }}>
+                        <option value="">-- แตะเพื่อเลือก Ticket --</option>
+                        {activeTickets.map(t => (
+                          <option key={t.id} value={t.id}>{t.id} — {t.title} ({t.customer})</option>
+                        ))}
+                      </select>
+                      {matchedTicket && (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={typeBadge(ticketType)}>{ticketType}</span>
+                          <span style={{ fontSize: 11, color: '#64748b' }}>{matchedTicket.id}</span>
+                        </div>
+                      )}
+                    </Card>
                     {/* Banners for Close Approval status and rejection */}
                     {matchedTicket.status === 'Waiting Close Approval' && (
                       <div style={{
@@ -1713,14 +2909,7 @@ export default function IpadOnsiteTest() {
                       </Card>
                     )}
                   </>
-                ) : (
-                  /* No ticket selected */
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '55%', color: '#94a3b8' }}>
-                    <div style={{ fontSize: 52, marginBottom: 8 }}>📲</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'Kanit, sans-serif' }}>กรุณาเลือกตั๋วงาน</div>
-                    <div style={{ fontSize: 11.5, textAlign: 'center', maxWidth: 280, marginTop: 6, lineHeight: 1.5 }}>เลือก Ticket จากเมนูด้านบนเพื่อเริ่มจำลองฟอร์ม Onsite Service Report บน iPad Air</div>
-                  </div>
-                )}
+                ))}
               </div>
 
               {/* Home Indicator */}
@@ -1730,7 +2919,7 @@ export default function IpadOnsiteTest() {
         </div>
 
         {/* ═══ RIGHT SIDEBAR ═══ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 16 }}>
+        <div className="sidebar-container">
 
           {/* Testing Guide */}
           <div className="sidebar-card">
