@@ -2,6 +2,8 @@
 
 ไฟล์นี้สรุปสถาปัตยกรรม โครงสร้างโค้ด แบบจำลองข้อมูล (Schemas) และแนวทางการพัฒนาของระบบ **NIS Service ERP** สำหรับนำไปใช้เป็นบริบทอ้างอิงร่วมกับ **Claude Code** หรือเครื่องมือ AI Agent อื่นๆ ได้ทันที
 
+> **อัปเดตล่าสุด:** 11 กรกฎาคม 2026
+
 ---
 
 ## 1. คำสั่งควบคุมระบบ (Build & Development Commands)
@@ -31,11 +33,12 @@
 /Users/apple/Desktop/Antigravity/Service2
 ├── package.json               # รายการ Dependencies และ Scripts ของโปรเจกต์
 ├── vite.config.js             # การตั้งค่า Vite (ใช้ React plugin เปล่า)
-├── index.html                 # หน้าหลักเว็บแอปพลิเคชัน (โหลด Google Fonts: Prompt)
+├── index.html                 # หน้าหลักเว็บแอปพลิเคชัน (โหลด Google Fonts: Prompt, Kanit)
+├── CLAUDE.md                  # ไฟล์บริบทสถาปัตยกรรมระบบสำหรับ AI Agent
 ├── src
 │   ├── main.jsx               # จุดเริ่มต้นของแอปพลิเคชัน (React Root render)
 │   ├── App.jsx                # กำหนดเส้นทาง URL (React Router v7 Route Mapping)
-│   ├── index.css              # สไตล์ส่วนกลาง โทนสี และ CSS Animations (เช่น .animate-pulse-ping)
+│   ├── index.css              # สไตล์ส่วนกลาง โทนสี และ CSS Animations
 │   ├── App.css                # CSS ตกแต่งย่อย
 │   ├── mockDb.js              # ระบบจำลองฐานข้อมูลที่ทำงานผ่าน LocalStorage
 │   ├── layouts
@@ -47,21 +50,21 @@
 │       ├── SalesOrders.jsx    # รายการใบสั่งขาย (ที่สร้างจากใบเสนอราคาที่ได้รับการอนุมัติ)
 │       ├── Projects.jsx       # รายการโครงการและตั๋วงานของวิศวกร
 │       ├── NewProject.jsx     # หน้าสร้างโครงการใหม่ (พร้อมระบบกำหนดตั๋วงานย่อย)
-│       ├── TicketDetail.jsx   # รายละเอียดและขั้นตอนการดำเนินการตั๋วงาน (มีระบบตรวจพิกัดและเซ็นชื่อรับงาน)
-│       ├── ServiceBoard.jsx   # บอร์ดบริการแบบคอลัมน์ Kanban (Drag & Drop สำหรับสถานะตั๋วงาน)
+│       ├── TicketDetail.jsx   # รายละเอียดและขั้นตอนการดำเนินการตั๋วงาน
+│       ├── ServiceBoard.jsx   # บอร์ดบริการแบบ Kanban + ระบบ Assign งาน + ปฏิทิน Onsite
 │       ├── ServiceTeam.jsx    # รายชื่อทีมวิศวกร ทักษะ และภาระงานปัจจุบัน
 │       ├── SalesTeam.jsx      # รายชื่อทีมขาย เป้ายอดขาย และข้อมูลการทำยอดปัจจุบัน
 │       ├── ClaimsPortal.jsx   # ระบบติดตามและจัดการการเคลมสินค้าประกันอุปกรณ์
-│       ├── StaffPortal.jsx    # หน้าหลักสำหรับวิศวกรภาคสนามเพื่ออัปเดตงานและขอเบิกอุปกรณ์เคลม
-│       ├── IpadOnsiteTest.jsx # แอปจำลองหน้าจอ iPad สำหรับกรอกฟอร์มบริการหน้างานแบบออฟไลน์
-│       └── SystemConfig.jsx   # ตัวเลือกสำหรับตั้งค่าระบบและปุ่มล้างข้อมูล/เริ่มระบบใหม่ (Reset DB)
+│       ├── StaffPortal.jsx    # หน้าหลักสำหรับวิศวกรภาคสนาม
+│       ├── IpadOnsiteTest.jsx # แอปจำลองหน้าจอ iPad Air สำหรับช่างหน้างาน (หน้าหลักระบบ)
+│       └── SystemConfig.jsx   # ตัวเลือกสำหรับตั้งค่าระบบและปุ่มล้างข้อมูล (Reset DB)
 ```
 
 ---
 
 ## 3. สถาปัตยกรรมข้อมูลและฐานข้อมูลจำลอง (`mockDb.js`)
 
-ระบบนี้ไม่มี Backend หรือฐานข้อมูล SQL/NoSQL ภายนอก ข้อมูลทั้งหมดจะถูกจัดการผ่าน `localStorage` ในเบราว์เซอร์ โดยมีข้อมูลตั้งต้นและ Helpers สำหรับอ่าน-เขียนข้อมูลดังนี้:
+ระบบนี้ไม่มี Backend หรือฐานข้อมูล SQL/NoSQL ภายนอก ข้อมูลทั้งหมดจะถูกจัดการผ่าน `localStorage` ในเบราว์เซอร์
 
 ### 3.1. Schemas หลักในระบบ
 
@@ -82,7 +85,7 @@
     "value": 850000,
     "tags": ["Firewall", "Network"],
     "items": [
-      { "id": 1, "name": "FortiGate 100F Next-Gen Firewall", "sku": "FG-100F", "qty": 1, "price": 580000, "warranty": "3 ปี (Vendor)", "type": "Hardware" }
+      { "id": 1, "name": "FortiGate 100F", "sku": "FG-100F", "qty": 1, "price": 580000, "warranty": "3 ปี (Vendor)", "type": "Hardware" }
     ]
   }
   ```
@@ -110,8 +113,8 @@
 
 #### โครงการและตั๋วงาน (Projects & Tickets)
 * ตัวแปรใน LocalStorage: `nis_projects`
-* โครงสร้าง:
-  * ในระดับ Project จะเก็บรายการตั๋วงานย่อย (`tickets`) แบบฝังในตัวเอง (Embedded Array) เพื่อให้การติดตามทำได้ง่าย
+* ในระดับ Project จะเก็บรายการตั๋วงานย่อย (`tickets`) แบบฝัง (Embedded Array)
+* **[อัปเดต]** Field สำคัญที่เพิ่มใหม่ใน Ticket: `onsiteDate` (วันกำหนดเข้าปฏิบัติงานจริง)
   ```json
   {
     "id": "PRJ-2023-044",
@@ -134,31 +137,84 @@
       {
         "id": "TK-0091",
         "title": "ติดตั้ง FortiGate 100F + FortiSwitch",
-        "status": "Open | Assigned | Confirmed | Checkin | Working | Completed | Pending",
+        "status": "Open | In Progress | Pending | Waiting Close Approval | Done | Closed",
         "assignee": "Krit P.",
         "due": "2023-10-30",
+        "onsiteDate": "2023-10-28",
         "pct": 70,
-        "ticketType": "Install | MA | PM",
+        "ticketType": "Install | MA | PM | Support | Backup | Report | งานภายใน | Lab/เรียนรู้",
         "accepted": true,
-        "checkinTime": "2026-06-25 09:30",
-        "checkoutTime": "",
-        "logs": [
-          { "time": "2023-10-25 10:00", "note": "ระบบเริ่มรัน", "author": "System" }
-        ]
+        "skipSignature": false,
+        "noOnsite": false,
+        "requireCloseApproval": false,
+        "rejectionReason": "",
+        "checklist": [{ "label": "ตรวจสอบ Rack", "done": false }],
+        "note": "คำสั่งชี้แจงจาก Service Manager"
       }
     ]
   }
   ```
 
-#### อุปกรณ์ในคลังและงานเคลม (Stock & Warranty Claims)
-* คลังสำรองสำหรับเปลี่ยนอุปกรณ์: `nis_stock` (ตัวแปรเก็บอุปกรณ์สำรองของสำนักงานสำหรับเปลี่ยนทดแทนให้ลูกค้าเมื่อเกิดปัญหา)
+#### คำขอเปิดตั๋วจาก Staff (Pending Ticket Requests)
+* ตัวแปรใน LocalStorage: `nis_pending_tickets`
+* **[ใหม่]** ช่างสามารถขอเปิดตั๋วผ่าน iPad → Service Manager อนุมัติใน ServiceBoard
+  ```json
+  {
+    "id": "REQ-1720000000000",
+    "title": "ขอ Support ลูกค้า ABC",
+    "projectId": "PRJ-GENERAL",
+    "location": "NIS Office / Remote",
+    "ticketType": "Support",
+    "due": "2026-07-15",
+    "onsiteDate": "2026-07-13",
+    "detail": "รายละเอียดงาน...",
+    "supportMethod": "Onsite | Remote | Telephone",
+    "parentTicketId": "",
+    "noOnsite": false,
+    "skipSignature": false,
+    "requireCloseApproval": false,
+    "requestedBy": "Krit P.",
+    "status": "Pending Approval",
+    "requestTime": "11/7/2569 10:30:00"
+  }
+  ```
+
+#### คลัง NIS Warehouse (Stock)
+* ตัวแปรใน LocalStorage: `nis_stock`
+* **[อัปเดต]** เพิ่ม `category` field สำหรับแบ่งหมวดหมู่สินค้า
+  ```json
+  {
+    "id": "STK-001",
+    "name": "FortiGate 60F",
+    "brand": "Fortinet",
+    "model": "FG-60F",
+    "sn": "FG60FT0001",
+    "qty": 3,
+    "category": "Firewall | Switch | WiFi | CCTV | Lan&Cable | Server",
+    "status": "Available | Low Stock | Out of Stock"
+  }
+  ```
+
+#### อุปกรณ์ในคลังและงานเคลม (Warranty Claims)
+* คลังสำรอง: `nis_stock`
 * ข้อมูลการเคลมประกัน: `nis_claims` & แจ้งเตือนฝ่ายขาย: `nis_claims_notifications`
+
+#### โน้ตส่วนตัว (Personal Notes)
+* ตัวแปรใน LocalStorage: `nis_personal_notes`
+* **[ใหม่]** รองรับการตั้ง Reminder พร้อม datetime-local
+  ```json
+  {
+    "id": "note-1720000000000",
+    "text": "เนื้อหาโน้ต...",
+    "reminder": "2026-07-15T09:00",
+    "createdAt": "2026-07-11T10:00"
+  }
+  ```
 
 ---
 
 ### 3.2. ฟังก์ชันอำนวยความสะดวกใน `mockDb.js`
 
-ตัวอย่าง API จำลองที่สามารถนำไปอิมพอร์ตเพื่อจัดการข้อมูลในหน้าต่างๆ:
 * `getQuotations()` / `saveQuotations(data)` / `addQuotation(q)`
 * `getSalesOrders()` / `saveSalesOrders(data)` / `addSalesOrder(so)`
 * `getProjects()` / `saveProjects(data)` / `addProject(p)`
@@ -166,43 +222,125 @@
 * `getServiceReports()` / `addServiceReport(report)` / `getNextServiceReportNumber()`
 * `getClaims()` / `addClaim(claim)` / `getNextClaimNumber()`
 * `getClaimNotifications()` / `addClaimNotification(notif)`
+* `getPendingTickets()` / `savePendingTickets(data)` — คำขอเปิดตั๋วจาก Staff
+* `getDynamicStaff()` / `saveDynamicStaff(data)` — รายชื่อช่างแบบ Dynamic
+* `getPersonalNotes()` / `savePersonalNotes(data)` — โน้ตส่วนตัว
+* `getPersonalChecklists()` / `savePersonalChecklists(data)` — Checklist/Todo ส่วนตัว
 * `resetDb()` (รีเซ็ตกลับเป็นค่า Default ทั้งหมด)
 
 ---
 
 ## 4. โฟลว์การทำงานของระบบ (System Workflow)
 
-ระบบถูกออกแบบมาให้จำลองลูปธุรกิจแบบ End-to-End ของการขายและการบริการหลังการขายด้านไอที:
+### 4.1 โฟลว์หลักธุรกิจ End-to-End
 
 1. **ฝ่ายขายสร้างใบเสนอราคา (Quotation Flow):**
-   * สร้างเอกสารเสนอราคาในหน้า `QuotationDetail` -> สถานะเป็น `Draft` -> เมื่อยืนยันเปลี่ยนเป็น `Approved`
+   * สร้างเอกสารเสนอราคาในหน้า `QuotationDetail` → สถานะ `Draft` → ยืนยันเปลี่ยนเป็น `Approved`
+
 2. **สร้างใบสั่งขาย (Sales Order Flow):**
-   * ใบเสนอราคาที่อนุมัติแล้วจะสามารถแปลงเป็น `Sales Order` ได้ทางหน้า `SalesOrders` เพื่ออ้างอิง PO ของลูกค้า
+   * ใบเสนอราคาที่อนุมัติแล้วแปลงเป็น `Sales Order` ทางหน้า `SalesOrders` เพื่ออ้างอิง PO ของลูกค้า
+
 3. **เปิดโครงการและสร้างงานช่าง (Project & Ticket Flow):**
-   * ที่หน้า `NewProject` หรือแปลงจาก Sales Order ระบบจะให้เพิ่มโครงการพร้อมกับฝังรายการตั๋วงานย่อย (Tickets) ให้ระบุวิศวกรผู้รับผิดชอบ (`assignee`)
-4. **พอร์ทัลของช่างหน้างาน (Field Technical Flow - `StaffPortal` & `TicketDetail`):**
-   * วิศวกรเข้าทางหน้า `StaffPortal` เพื่อดูตั๋วงานที่ได้รับมอบหมาย
-   * กด **"ยอมรับงาน (Confirm)"** -> เดินทางถึงกด **"Check-in หน้างาน"** (บันทึกพิกัดจำลอง) -> ลงมือดำเนินการอัปเดตความคืบหน้า (%)
-   * เมื่อเสร็จงาน กดบันทึกเพื่อนำสู่หน้าจอ **"ลูกค้าลงนาม (Customer Sign)"** ผ่านลายเซ็นอิเล็กทรอนิกส์ (Signature Canvas)
-   * ระบบสร้าง **Service Report (SR)** เพื่อส่งผลลัพธ์กลับไปยังคลังข้อมูลกลางโดยอัตโนมัติ
-5. **การเคลมเปลี่ยนเครื่องสำรองและส่งแจ้งเตือนฝ่ายขาย (Warranty Claim Flow):**
-   * หากวิศวกรตรวจสอบพบอุปกรณ์ชำรุด สามารถกดเบิกอุปกรณ์เคลมจากคลังกลาง (หักลดจำนวน Stock และจับคู่หมายเลขเครื่องตัวสำรอง)
-   * ระบบบันทึกประวัติการเคลมและแจ้งเตือนกลับไปยังใบประเมินของฝ่ายขาย (`Sales Manager` / `Project Manager`) ผ่านกล่องข้อความแจ้งเตือนที่แถบเลย์เอาต์หลัก เพื่อวางแผนเคลมซัพพลายเออร์ต่อไป
+   * ที่หน้า `NewProject` หรือแปลงจาก Sales Order ระบบให้เพิ่มโครงการพร้อมฝังตั๋วงานย่อย (Tickets)
+
+4. **[อัปเดต] กระบวนการกำหนดวันเข้า Onsite (Service Manager Flow — `ServiceBoard.jsx`):**
+   * Service Manager สร้างตั๋วงานหรือ Assign ช่าง พร้อม **กำหนดวันเข้า Onsite (`onsiteDate`)** แยกจาก Due Date
+   * ปฏิทินบนบอร์ด (`ServiceBoard`) จะจัดกลุ่มตั๋วตาม **`onsiteDate`** (ไม่ใช่ Due Date)
+   * บนการ์ดตั๋ว Kanban จะแสดงทั้ง `Due:` และ `Onsite:` แยกกันชัดเจน
+   * Modal Assign งาน จะ **Pre-fill** วันเข้า Onsite จากตั๋วที่มีอยู่ก่อนหน้าอัตโนมัติ
+
+5. **[ใหม่] กระบวนการขอเปิดตั๋วจากช่าง (Staff Ticket Request Flow):**
+   * ช่างกรอกฟอร์ม **"ขอเปิดตั๋ว"** ผ่าน iPad → ระบุหัวข้อ, โปรเจกต์, วันเข้า Onsite, วัน Due, วิธี Support
+   * คำขอบันทึกลง `nis_pending_tickets` → แสดงในแท็บ **"📥 คำขอจาก Staff"** บน ServiceBoard
+   * Service Manager กด **"อนุมัติ"** → ระบบแปลงเป็นตั๋วงานจริงพร้อมผูก `onsiteDate` อัตโนมัติ
+   * Service Manager กด **"ปฏิเสธ"** → ลบคำขอออกจากคิว
+
+6. **พอร์ทัลของช่างหน้างาน (iPad Air Staff Portal — `IpadOnsiteTest.jsx`):**
+   * ช่าง Login ด้วยชื่อ → เข้าสู่ **Staff Dashboard** พร้อมกล่องสถิติ 6 ช่อง (กดได้เพื่อดูรายละเอียดใน Modal)
+   * กล่องสถิติ: ตั๋วทั้งหมด / รอตอบรับ / กำลังดำเนินการ / เกินกำหนด / ปิดแล้ว / อุปกรณ์ค้างตัว
+   * เลือกตั๋วงาน → กด **Accept รับงาน** → **Check-in** → กรอก Onsite Report → เซ็นลายเซ็นลูกค้า → **Preview PDF** → ส่ง Email ปิดงาน
+   * Modal ทั้งหมด (PDF Preview, Email Confirm, Stats Detail) **แสดงผลภายในขอบเขตหน้าจอ iPad** (absolute positioning)
+   * **ปฏิทินงาน** จัดตั๋วตาม `onsiteDate` แสดง Ticket ID + ชื่องาน + แถบสีบ่งชี้ความเร่งด่วน + Tooltip รายละเอียด
+
+7. **การเคลมเปลี่ยนอุปกรณ์และแจ้งเตือนฝ่ายขาย (Warranty Claim Flow):**
+   * หากพบอุปกรณ์ชำรุด ช่างเบิกจากคลัง NIS (หักลด Stock) → บันทึกประวัติเคลม → แจ้งเตือน Sales Manager
 
 ---
 
-## 5. แนวทางปฏิบัติในการพัฒนา (Coding & UI Guidelines สำหรับ Claude Code)
+## 5. รายละเอียด `IpadOnsiteTest.jsx` (iPad Air Onsite Simulator)
+
+หน้าที่ซับซ้อนที่สุดในระบบ จำลองการทำงานของช่างหน้างานบน iPad Air ประกอบด้วย:
+
+### แท็บหลักใน iPad
+| แท็บ | รายละเอียด |
+|---|---|
+| **งานของฉัน** | รายการตั๋วงานที่ได้รับมอบหมาย + ปฏิทินงาน Onsite |
+| **ขอเปิดตั๋ว** | ฟอร์มขอเปิดตั๋วงานใหม่ พร้อม Onsite Date + วิธี Support |
+| **คลัง NIS** | รายการอุปกรณ์สำรอง แบ่งตาม Category (Firewall/Switch/WiFi/CCTV/Lan&Cable/Server) |
+| **โน้ตส่วนตัว** | บันทึกช่วยจำส่วนตัว + ตั้ง Reminder (datetime-local) |
+| **กิจกรรม** | Log การทำงานของช่างในระบบ |
+
+### State สำคัญใน `IpadOnsiteTest.jsx`
+* `loggedInStaff` — ข้อมูลช่างที่ Login อยู่
+* `selectedTicketId` — ตั๋วงานที่กำลังทำงานอยู่
+* `checkInTime` / `checkOutTime` — เวลา Check-in/out หน้างาน
+* `reqOnsiteDate` / `reqDue` — วันเข้า Onsite และ Due Date ในฟอร์มขอตั๋ว
+* `showPdfPreview` / `showEmailModal` / `selectedStatKey` — ควบคุม Modal ต่างๆ (ทั้งหมด absolute ภายใน iPad screen)
+* `nisStock` / `selectedCategory` — คลังสินค้าและ Filter หมวดหมู่
+* `personalNotes` / `personalChecklists` — โน้ตและ Todo ส่วนตัว
+
+### โครงสร้าง Modal (สำคัญมาก)
+Modal ทั้งหมดใน `IpadOnsiteTest.jsx` ต้องวางไว้ **ภายใน** `<div className="ipad-screen">` และใช้ `position: 'absolute'` เสมอ (ไม่ใช่ `fixed`) เพื่อให้แสดงผลอยู่ภายในกรอบ iPad จำลอง
+
+---
+
+## 6. รายละเอียด `ServiceBoard.jsx` (Service Manager Board)
+
+### แท็บหลักใน ServiceBoard
+| แท็บ | รายละเอียด |
+|---|---|
+| **📋 Board** | Kanban columns: Open / In Progress / Review / Done |
+| **📅 Assign** | มอบหมายงาน + กำหนดวันเข้า Onsite ให้ช่าง |
+| **📆 Calendar** | ปฏิทินรายเดือน จัดตั๋วตาม `onsiteDate` |
+| **📥 คำขอจาก Staff** | อนุมัติ/ปฏิเสธคำขอเปิดตั๋วจากช่าง + อนุมัติปิดตั๋ว |
+| **👥 ทีม** | จัดการรายชื่อช่างเทคนิค |
+| **⚙️ ตั้งค่า** | ตั้งค่าโปรเจกต์ สถานที่ ลูกค้า |
+
+### State สำคัญใน `ServiceBoard.jsx`
+* `projectsList` — รายการโครงการทั้งหมดพร้อมตั๋วงานฝัง (ดึงจาก `getProjects()`)
+* `ticketsList` — ตั๋วงานทั้งหมด Flatten จาก projectsList (computed)
+* `assignOnsiteDate` — วันเข้า Onsite ที่จะ Assign ให้ช่าง (Pre-filled จากตั๋วเดิม)
+* `pendingRequests` — คำขอเปิดตั๋วจาก Staff (ดึงจาก `getPendingTickets()`)
+* `newTicketForm` — ฟอร์มสร้างตั๋วใหม่ (มี `due` และ `onsiteDate` แยกกัน)
+
+---
+
+## 7. แนวทางปฏิบัติในการพัฒนา (Coding & UI Guidelines)
 
 1. **เฟรมเวิร์กหลัก:**
-   * ใช้ **React 19** แบบ Functional Components
-   * ใช้ระบบนำทางของ **React Router Dom v7** (ใน `src/App.jsx` โครงสร้างเป็นแบบ nested route ที่ผ่าน `DashboardLayout` ทั้งหมด)
+   * ใช้ **React 19** แบบ Functional Components + Hooks
+   * ใช้ระบบนำทางของ **React Router Dom v7** (nested route ผ่าน `DashboardLayout`)
+
 2. **การจัดการสไตล์และการออกแบบ:**
    * ใช้ **Tailwind CSS v4** เป็นหลักในการจัดหน้ากระดาษ
-   * ใช้ Inline Styles ผสมผสานในการกำหนดสีเฉพาะหรือกล่องแผงโมดัลแบบโต้ตอบ (Interactive Modals) เพื่อความยืดหยุ่นในการจัดทำ UI ระดับพรีเมียม
-   * หลีกเลี่ยงหน้าว่าง/ตัวหนังสือเปล่า: เมื่อออกแบบสถานะรอดำเนินการให้ใช้ Skeleton Loader หรือข้อความที่เป็นมิตรพร้อมรูปภาพหรือไอคอนประกอบ
+   * ใช้ **Inline Styles** สำหรับ Modal, iPad Simulator และ UI ระดับ Component พิเศษ
+   * ฟอนต์หลัก: **Prompt** (ภาษาไทย) และ **Kanit** (หัวข้อ/ตัวเลข) — โหลดจาก Google Fonts
+
 3. **การจัดการ State:**
-   * การเพิ่ม ลบ หรือแก้ไขข้อมูลต่างๆ **ต้องเขียนทับลง LocalStorage** ผ่าน helper functions ที่จัดไว้ใน `src/mockDb.js`
-   * หลีกเลี่ยงการจำลอง State เก็บไว้เฉพาะใน Component หากต้องการใช้ข้ามหน้า ให้ดึงหรือบันทึกผ่าน `mockDb.js` ทุกครั้ง เพื่อไม่ให้ข้อมูลสูญหายเมื่อเบราว์เซอร์รีเฟรชหน้าเว็บ
-4. **ฟอนต์และไอคอน:**
-   * ฟอนต์หลักของโปรเจกต์คือ **Prompt** (รองรับภาษาไทย) กำหนดไว้ใน `index.css`
-   * ไอคอนในแถบนำทางและแดชบอร์ดเกือบทั้งหมดใช้ SVG แบบฝังโค้ด (Inline SVG) หรือใช้ `lucide-react` ในจุดที่มีองค์ประกอบซับซ้อน
+   * การเพิ่ม ลบ หรือแก้ไขข้อมูลต่างๆ **ต้องเขียนทับลง LocalStorage** ผ่าน helper functions ใน `src/mockDb.js`
+   * หลีกเลี่ยงการเก็บ State เฉพาะใน Component หากต้องการใช้ข้ามหน้า
+
+4. **กฎ Modal ใน iPad Simulator (`IpadOnsiteTest.jsx`):**
+   * Modal ทุกตัวต้องวางในโครงสร้าง DOM ภายใน `.ipad-screen`
+   * ใช้ `position: 'absolute'` เสมอ (ห้ามใช้ `fixed`)
+   * z-index ลำดับ: Stats Modal (999999) → Email Modal (999999) → PDF Modal (1000000)
+
+5. **Field `onsiteDate` ในตั๋วงาน:**
+   * ต้อง Set ทุกครั้งที่ Create หรือ Assign ตั๋ว
+   * ถ้าไม่มี ให้ Fallback เป็น `due` date: `t.onsiteDate || t.due`
+   * ปฏิทินทั้งใน ServiceBoard และ iPad ใช้ `onsiteDate` เป็น Primary key สำหรับจัดกลุ่ม
+
+6. **Git Workflow:**
+   * Branch: `main` → Remote: `origin` (https://github.com/alert-nisolution/NIS-Service-ERP.git)
+   * ทุกครั้งที่แก้ไขเสร็จ: `git add` → `git commit -m "feat/fix/style: ..."` → `git push origin main`
+   * Git user: `atichat-tech` / `atichat@nisolution.co.th`
