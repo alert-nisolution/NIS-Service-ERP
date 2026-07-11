@@ -531,10 +531,22 @@ function DashboardView({ user, filter, setFilter }) {
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-        <KpiCard icon="📋" label="ตั๋วทั้งหมด"   value={kpiData.total}   trend="up"   trendPct="+12%" bg={C.primarySoft}  color={C.primary} />
-        <KpiCard icon="⚡" label="กำลังดำเนินการ" value={kpiData.inProg}  trend="up"   trendPct="+5%"  bg={C.warningSoft} color={C.warning} />
-        <KpiCard icon="✅" label="เสร็จแล้ว"     value={kpiData.done}   trend="up"   trendPct="+18%" bg={C.successSoft} color={C.success} />
-        <KpiCard icon="🔴" label="เกินกำหนด"     value={kpiData.overdue} trend="down" trendPct="-3%"  bg={C.dangerSoft}  color={C.danger} />
+        <KpiCard 
+          icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} 
+          label="ตั๋วทั้งหมด" value={kpiData.total} trend="up" trendPct="+12%" bg={C.primarySoft} color={C.primary} 
+        />
+        <KpiCard 
+          icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>} 
+          label="กำลังดำเนินการ" value={kpiData.inProg} trend="up" trendPct="+5%" bg={C.warningSoft} color={C.warning} 
+        />
+        <KpiCard 
+          icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} 
+          label="เสร็จแล้ว" value={kpiData.done} trend="up" trendPct="+18%" bg={C.successSoft} color={C.success} 
+        />
+        <KpiCard 
+          icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} 
+          label="เกินกำหนด" value={kpiData.overdue} trend="down" trendPct="-3%" bg={C.dangerSoft} color={C.danger} 
+        />
       </div>
 
       {/* Main Two-Column */}
