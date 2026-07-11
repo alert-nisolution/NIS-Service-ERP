@@ -333,14 +333,18 @@ function Header({ user, onLogout, notifCount }) {
 /* ─────────────────────────────────────────────
    KPI CARD
 ───────────────────────────────────────────── */
-function KpiCard({ icon, label, value, trend, trendPct, bg, color }) {
+function KpiCard({ icon, label, value, trend, trendPct, bg, color, onClick }) {
   const up = trend === 'up';
   return (
-    <div style={{
-      background: C.surface, borderRadius: 20, padding: '20px 22px',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: `1px solid ${C.border}`,
-      display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', overflow: 'hidden',
-    }}>
+    <div 
+      onClick={onClick}
+      style={{
+        background: C.surface, borderRadius: 20, padding: '20px 22px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: `1px solid ${C.border}`,
+        display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', overflow: 'hidden',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s',
+      }}>
       <div style={{ position:'absolute', top:-20, right:-20, width:80, height:80, borderRadius:'50%', background: bg, opacity:0.4 }} />
       <div style={{
         width: 40, height: 40, borderRadius: 12, background: bg,
@@ -430,6 +434,8 @@ function BottomNav({ active, onChange }) {
    MAIN DASHBOARD VIEW
 ───────────────────────────────────────────── */
 function DashboardView({ user, filter, setFilter }) {
+  const [selectedStatKey, setSelectedStatKey] = useState(null);
+  
   // ── Load data ──
   const projects      = getProjects();
   const pendingReqs   = getPendingTickets();
@@ -508,6 +514,42 @@ function DashboardView({ user, filter, setFilter }) {
     return days;
   }, [allTickets]);
 
+  const getStatModalData = () => {
+    switch (selectedStatKey) {
+      case 'all':
+        return {
+          title: 'ตั๋วงานทั้งหมด',
+          icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
+          color: C.primary,
+          items: myTickets
+        };
+      case 'inprogress':
+        return {
+          title: 'กำลังดำเนินการ',
+          icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+          color: C.warning,
+          items: myTickets.filter(t => ['In Progress','Working','Confirmed','Checkin'].includes(t.status))
+        };
+      case 'done':
+        return {
+          title: 'เสร็จแล้ว',
+          icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+          color: C.success,
+          items: myTickets.filter(t => ['Completed','Done','Closed'].includes(t.status))
+        };
+      case 'overdue':
+        return {
+          title: 'เกินกำหนด',
+          icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+          color: C.danger,
+          items: myTickets.filter(t => t.due && t.due < todayStr() && !['Completed','Done','Closed'].includes(t.status))
+        };
+      default:
+        return null;
+    }
+  };
+  const statModalData = getStatModalData();
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 100px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Filter Segment */}
@@ -534,18 +576,22 @@ function DashboardView({ user, filter, setFilter }) {
         <KpiCard 
           icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} 
           label="ตั๋วทั้งหมด" value={kpiData.total} trend="up" trendPct="+12%" bg={C.primarySoft} color={C.primary} 
+          onClick={() => setSelectedStatKey('all')}
         />
         <KpiCard 
           icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>} 
           label="กำลังดำเนินการ" value={kpiData.inProg} trend="up" trendPct="+5%" bg={C.warningSoft} color={C.warning} 
+          onClick={() => setSelectedStatKey('inprogress')}
         />
         <KpiCard 
           icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} 
           label="เสร็จแล้ว" value={kpiData.done} trend="up" trendPct="+18%" bg={C.successSoft} color={C.success} 
+          onClick={() => setSelectedStatKey('done')}
         />
         <KpiCard 
           icon={<svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} 
           label="เกินกำหนด" value={kpiData.overdue} trend="down" trendPct="-3%" bg={C.dangerSoft} color={C.danger} 
+          onClick={() => setSelectedStatKey('overdue')}
         />
       </div>
 
@@ -711,6 +757,90 @@ function DashboardView({ user, filter, setFilter }) {
           </div>
         </div>
       </div>
+
+      {/* ═══ Stats Detail Modal ═══ */}
+      {statModalData && (
+        <div 
+          style={{ 
+            position: 'absolute', 
+            inset: 0, 
+            zIndex: 999999, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            background: 'rgba(0,0,0,0.5)', 
+            backdropFilter: 'blur(3px)',
+          }}
+          onClick={() => setSelectedStatKey(null)}
+        >
+          <div 
+            style={{ 
+              width: 620, 
+              maxWidth: '94%',
+              background: C.surface, 
+              borderRadius: 20, 
+              padding: 24, 
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: statModalData.color + '20', color: statModalData.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {statModalData.icon}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>{statModalData.title}</h3>
+                  <div style={{ fontSize: 13, color: C.textSub }}>ทั้งหมด {statModalData.items.length} รายการ</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedStatKey(null)}
+                style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: C.bg, color: C.textSub, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* List */}
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+              {statModalData.items.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: C.textSub, fontSize: 14 }}>ไม่พบข้อมูล</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {statModalData.items.map(item => (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 14, border: `1px solid ${C.border}`, borderRadius: 14, background: '#FAFAFA' }}>
+                      <div style={{ minWidth: 0, paddingRight: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontWeight: 700, color: C.primary, fontSize: 14 }}>{item.id}</span>
+                          <StatusBadge status={item.status} />
+                        </div>
+                        <div style={{ fontSize: 14, color: C.text, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+                        <div style={{ fontSize: 12, color: C.textSub, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.customer || item.projectName} · Onsite: <span style={{ color: (item.onsiteDate || item.due) < todayStr() && !['Completed','Done','Closed'].includes(item.status) ? C.danger : C.textSub, fontWeight: 600 }}>{item.onsiteDate || item.due || '-'}</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 11, color: C.textSub, marginBottom: 4 }}>ผู้รับผิดชอบ</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                          <div style={{ width: 22, height: 22, borderRadius: '50%', background: `linear-gradient(135deg, ${C.primary}, #7C3AED)`, color: '#fff', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {initials(item.assignee || 'NA')}
+                          </div>
+                          {item.assignee || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
