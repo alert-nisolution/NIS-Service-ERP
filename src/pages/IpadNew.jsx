@@ -1035,6 +1035,172 @@ function ReportsView() {
 }
 
 /* ─────────────────────────────────────────────
+   CALENDAR VIEW
+───────────────────────────────────────────── */
+function CalendarView({ user }) {
+  const projects = getProjects();
+  const allTickets = useMemo(() => {
+    return projects.flatMap(p =>
+      (p.tickets || []).map(t => ({ ...t, projectName: p.name, customer: p.customer, projectId: p.id }))
+    );
+  }, [projects]);
+  const myTickets = useMemo(() => {
+    if (user.role === 'manager') return allTickets;
+    return allTickets.filter(t => t.assignee === user.name);
+  }, [allTickets, user]);
+
+  const todayStrStr = new Date(Date.now() + 7*3600*1000).toISOString().split('T')[0];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:'20px 24px 100px', display:'flex', flexDirection:'column', gap:16 }}>
+      <div style={{ fontSize:20, fontWeight:700, color:C.text }}>📅 ปฏิทินงาน</div>
+      <div style={{ background:C.surface, borderRadius:20, padding:'24px', boxShadow:'0 2px 12px rgba(0,0,0,0.05)', border:`1px solid ${C.border}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', marginBottom: 12 }}>
+          {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(d => (
+            <div key={d} style={{ fontWeight: 700, fontSize: 13, color: C.textSub }}>{d}</div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+          {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const date = i + 1;
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+            const isToday = dateStr === todayStrStr;
+            const dayTickets = myTickets.filter(t => (t.onsiteDate === dateStr) || (t.due === dateStr));
+
+            return (
+              <div key={date} style={{ 
+                border: `1px solid ${isToday ? C.primary : C.border}`, 
+                borderRadius: 12, 
+                padding: 8, 
+                minHeight: 90, 
+                background: isToday ? C.primarySoft : C.bg 
+              }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: isToday ? C.primary : C.text, marginBottom: 6 }}>
+                  {date}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {dayTickets.map(tk => (
+                    <div key={tk.id} style={{
+                      fontSize: 10, padding: '4px 6px', borderRadius: 4,
+                      background: ['Completed','Done','Closed'].includes(tk.status) ? C.successSoft : C.warningSoft,
+                      color: ['Completed','Done','Closed'].includes(tk.status) ? C.success : C.warning,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      borderLeft: `2.5px solid ${['Completed','Done','Closed'].includes(tk.status) ? C.success : C.warning}`
+                    }}>
+                      {tk.id} | {tk.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   NOTES VIEW
+───────────────────────────────────────────── */
+function NotesView({ user }) {
+  const [personalChecklists, setPersonalChecklists] = useState(() => getPersonalChecklists());
+  const [newTodoText, setNewTodoText] = useState('');
+  const [newTodoRemindDateTime, setNewTodoRemindDateTime] = useState('');
+
+  const myTodos = personalChecklists[user.name] || [];
+
+  const handleAddTodo = () => {
+    if (!newTodoText.trim()) return;
+    const nextId = 'td-' + Date.now();
+    const newTodo = { id: nextId, text: newTodoText.trim(), done: false, remindDateTime: newTodoRemindDateTime || null };
+    
+    const current = personalChecklists[user.name] || [];
+    const nextMap = { ...personalChecklists, [user.name]: [...current, newTodo] };
+    
+    setPersonalChecklists(nextMap);
+    savePersonalChecklists(nextMap);
+    setNewTodoText('');
+    setNewTodoRemindDateTime('');
+  };
+
+  const handleToggleTodo = (id) => {
+    const current = personalChecklists[user.name] || [];
+    const nextList = current.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    const nextMap = { ...personalChecklists, [user.name]: nextList };
+    setPersonalChecklists(nextMap);
+    savePersonalChecklists(nextMap);
+  };
+
+  const handleDeleteTodo = (id) => {
+    const current = personalChecklists[user.name] || [];
+    const nextList = current.filter(t => t.id !== id);
+    const nextMap = { ...personalChecklists, [user.name]: nextList };
+    setPersonalChecklists(nextMap);
+    savePersonalChecklists(nextMap);
+  };
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:'20px 24px 100px', display:'flex', flexDirection:'column', gap:16 }}>
+      <div style={{ fontSize:20, fontWeight:700, color:C.text }}>✅ โน้ตส่วนตัว (Personal Notes)</div>
+      
+      <div style={{ background:C.surface, borderRadius:20, padding:'24px', boxShadow:'0 2px 12px rgba(0,0,0,0.05)', border:`1px solid ${C.border}` }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
+          <input type="text" value={newTodoText} onChange={e => setNewTodoText(e.target.value)} 
+            placeholder="พิมพ์บันทึกช่วยจำ..." 
+            onKeyDown={e => { if (e.key === 'Enter') handleAddTodo(); }}
+            style={{ flex: 1.5, fontSize: 14, padding: '10px 14px', borderRadius: 12, border: `1px solid ${C.border}`, background: C.bg }} />
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1.2 }}>
+            <span style={{ fontSize: 13, color: C.textSub, whiteSpace: 'nowrap' }}>🔔 แจ้งเตือน:</span>
+            <input type="datetime-local" value={newTodoRemindDateTime} onChange={e => setNewTodoRemindDateTime(e.target.value)}
+              style={{ flex: 1, fontSize: 13, padding: '9px 12px', borderRadius: 12, border: `1px solid ${C.border}`, background: C.bg }} />
+            {newTodoRemindDateTime && (
+              <button onClick={() => setNewTodoRemindDateTime('')} style={{ background: 'none', border: 'none', color: C.textSub, cursor: 'pointer', fontSize: 16 }}>✕</button>
+            )}
+          </div>
+
+          <button onClick={handleAddTodo} style={{ background: C.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            + เพิ่ม
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {myTodos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 10px', color: C.textSub, fontSize: 14, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
+              ไม่มีรายการบันทึกช่วยจำ
+            </div>
+          ) : (
+            myTodos.map(todo => (
+              <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.bg, borderRadius: 12, border: `1px solid ${C.border}` }}>
+                <input type="checkbox" checked={todo.done} onChange={() => handleToggleTodo(todo.id)} style={{ width: 20, height: 20, cursor: 'pointer', accentColor: C.primary }} />
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                  <span style={{ fontSize: 14, textDecoration: todo.done ? 'line-through' : '', color: todo.done ? C.textSub : C.text, fontWeight: 500 }}>
+                    {todo.text}
+                  </span>
+                  {todo.remindDateTime && (
+                    <span style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, fontWeight: 700, background: C.warningSoft, color: C.warning }}>
+                      🔔 {new Date(todo.remindDateTime).toLocaleString('th-TH', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })} น.
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => handleDeleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.danger, fontSize: 18, padding: 4 }}>✕</button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    SETTINGS TAB
 ───────────────────────────────────────────── */
 function SettingsView({ user, onLogout }) {
