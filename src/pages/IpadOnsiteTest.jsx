@@ -729,6 +729,9 @@ export default function IpadOnsiteTest() {
     });
     saveProjects(updatedProjects);
     setProjectsList(updatedProjects);
+    if (selectedTicketId === ticketId) {
+      setSelectedTicketId('');
+    }
 
     window.dispatchEvent(new CustomEvent('show-toast', {
       detail: { 
@@ -1143,6 +1146,9 @@ export default function IpadOnsiteTest() {
                       <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 6, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
                         {tk.accepted === false ? (
                           <>
+                            <button onClick={() => setSelectedTicketId(tk.id)} style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 4, padding: '3px 8px', fontSize: '9.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                              🔍 ดูรายละเอียด
+                            </button>
                             <button onClick={() => handleRejectTicketFromStaff(tk.id)} style={{ border: '1px solid #fca5a5', background: 'none', color: '#dc2626', borderRadius: 4, padding: '3px 8px', fontSize: '9.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
                               ปฏิเสธ
                             </button>
@@ -1873,7 +1879,7 @@ export default function IpadOnsiteTest() {
   }, [selectedTicketId]);
 
   /* ── Helpers ── */
-  const isFormLocked = !matchedTicket?.noOnsite && !checkInTime;
+  const isFormLocked = matchedTicket?.accepted === false || (!matchedTicket?.noOnsite && !checkInTime);
   const doneCount = checklist.filter(c => c.done).length;
   const donePct = checklist.length > 0 ? Math.round(doneCount / checklist.length * 100) : 0;
   const now = () => new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'medium' });
@@ -2281,6 +2287,42 @@ export default function IpadOnsiteTest() {
                         </div>
                       )}
                     </Card>
+                    {/* Banner for Acceptance status */}
+                    {matchedTicket && matchedTicket.accepted === false && (
+                      <div style={{
+                        background: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+                        border: '1.5px solid #ef4444',
+                        borderRadius: 10,
+                        padding: '12px 16px',
+                        marginBottom: 14,
+                        color: '#991b1b',
+                        fontSize: 11.5,
+                        lineHeight: 1.5,
+                        fontFamily: 'Prompt, sans-serif'
+                      }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626' }}>
+                          ⚠️ ตั๋วงานนี้ยังไม่ได้รับการตอบรับ (Pending Acceptance)
+                        </div>
+                        กรุณากดตอบรับงาน (Accept) ด้านล่างนี้เพื่อยืนยันและปลดล็อกฟอร์ม Onsite Report
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <button 
+                            type="button" 
+                            onClick={() => handleRejectTicketFromStaff(matchedTicket.id)} 
+                            style={{ background: '#fff', border: '1px solid #dc2626', color: '#dc2626', borderRadius: 6, padding: '6px 14px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}
+                          >
+                            ปฏิเสธงาน
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={() => handleAcceptTicketFromStaff(matchedTicket.id)} 
+                            style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}
+                          >
+                            ✓ Accept รับงาน
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Banners for Close Approval status and rejection */}
                     {matchedTicket.status === 'Waiting Close Approval' && (
                       <div style={{
@@ -2353,7 +2395,20 @@ export default function IpadOnsiteTest() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         <div>
                           {!checkInTime ? (
-                            <button onClick={handleCheckIn} style={{ ...btnStyle, width: '100%', background: '#16a34a', color: '#fff', border: 'none', padding: '10px 0', fontSize: 12 }}>
+                            <button 
+                              onClick={handleCheckIn} 
+                              disabled={matchedTicket.accepted === false}
+                              style={{ 
+                                ...btnStyle, 
+                                width: '100%', 
+                                background: matchedTicket.accepted === false ? '#cbd5e1' : '#16a34a', 
+                                color: matchedTicket.accepted === false ? '#94a3b8' : '#fff', 
+                                border: 'none', 
+                                padding: '10px 0', 
+                                fontSize: 12, 
+                                cursor: matchedTicket.accepted === false ? 'not-allowed' : 'pointer' 
+                              }}
+                            >
                               📍 Check-in
                             </button>
                           ) : (
