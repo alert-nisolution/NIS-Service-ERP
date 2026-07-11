@@ -381,7 +381,7 @@ export default function IpadOnsiteTest() {
   // Ticket request states
   const [reqTitle, setReqTitle] = useState('');
   const [reqProject, setReqProject] = useState('PRJ-GENERAL');
-  const [reqSite, setReqSite] = useState('NIS Office (สำนักงานใหญ่)');
+  const [reqSite, setReqSite] = useState('NIS Office / Remote');
   const [reqType, setReqType] = useState('Support');
   const [reqDue, setReqDue] = useState(new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
   const [reqDetail, setReqDetail] = useState('');
@@ -516,7 +516,7 @@ export default function IpadOnsiteTest() {
     // Reset Form
     setReqTitle('');
     setReqProject('PRJ-GENERAL');
-    setReqSite('NIS Office (สำนักงานใหญ่)');
+    setReqSite('NIS Office / Remote');
     setReqType('Support');
     setReqDue(new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
     setReqDetail('');
@@ -1300,10 +1300,11 @@ export default function IpadOnsiteTest() {
                         const selectedProjObj = projectsList.find(p => p.id === nextProj);
                         let sites = ['หน้างานสำนักงานลูกค้าหลัก'];
                         if (selectedProjObj) {
-                          const matchedCustomer = customersList.find(c => 
-                            c.name.toLowerCase().includes(selectedProjObj.customer.toLowerCase()) || 
-                            selectedProjObj.customer.toLowerCase().includes(c.name.toLowerCase())
-                          );
+                          const matchedCustomer = customersList.find(c => {
+                            const cName = (c.name || '').toLowerCase();
+                            const pCust = (selectedProjObj.customer || '').toLowerCase();
+                            return cName.includes(pCust) || pCust.includes(cName);
+                          });
                           if (matchedCustomer && matchedCustomer.locations && matchedCustomer.locations.length > 0) {
                             sites = matchedCustomer.locations.map(loc => `${loc.label} (${loc.address})`);
                           } else {
