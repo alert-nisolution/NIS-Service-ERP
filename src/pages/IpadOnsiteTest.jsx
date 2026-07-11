@@ -1016,24 +1016,39 @@ export default function IpadOnsiteTest() {
         {/* Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
           {[
-            { label: 'ตั๋วงานทั้งหมด', value: assignedTickets.length, desc: 'งานในความดูแล', icon: '📋', color: '#6366f1' },
-            { label: 'งานรอตอบรับ', value: pendingAcceptTickets.length, desc: 'งานใหม่รอ Accept', icon: '⌛', color: pendingAcceptTickets.length > 0 ? '#ef4444' : '#64748b', pulse: pendingAcceptTickets.length > 0 },
-            { label: 'กำลังดำเนินการ', value: inProgressTicketsCount, desc: 'Onsite / ทำงาน', icon: '🔧', color: '#f59e0b' },
-            { label: 'งานเกินกำหนด', value: overdueTickets.length, desc: 'เลยดิวส่งมอบ', icon: '⚠️', color: overdueTickets.length > 0 ? '#ef4444' : '#10b981', pulse: overdueTickets.length > 0 },
-            { label: 'งานที่ปิดแล้ว', value: closedTicketsCount, desc: 'MTD Completed', icon: '✓', color: '#10b981' },
-            { label: 'อุปกรณ์ที่เบิก', value: staffWithdrawnItems.reduce((acc, curr) => acc + curr.qtyOut, 0) + ' ชิ้น', desc: 'ยอดค้างติดตัว', icon: '📦', color: '#8b5cf6' }
+            { key: 'all', label: 'ตั๋วงานทั้งหมด', value: assignedTickets.length, desc: 'งานในความดูแล', icon: '📋', color: '#6366f1' },
+            { key: 'pending', label: 'งานรอตอบรับ', value: pendingAcceptTickets.length, desc: 'งานใหม่รอ Accept', icon: '⌛', color: pendingAcceptTickets.length > 0 ? '#ef4444' : '#64748b', pulse: pendingAcceptTickets.length > 0 },
+            { key: 'inprogress', label: 'กำลังดำเนินการ', value: inProgressTicketsCount, desc: 'Onsite / ทำงาน', icon: '🔧', color: '#f59e0b' },
+            { key: 'overdue', label: 'งานเกินกำหนด', value: overdueTickets.length, desc: 'เลยดิวส่งมอบ', icon: '⚠️', color: overdueTickets.length > 0 ? '#ef4444' : '#10b981', pulse: overdueTickets.length > 0 },
+            { key: 'closed', label: 'งานที่ปิดแล้ว', value: closedTicketsCount, desc: 'MTD Completed', icon: '✓', color: '#10b981' },
+            { key: 'withdrawn', label: 'อุปกรณ์ที่เบิก', value: staffWithdrawnItems.reduce((acc, curr) => acc + curr.qtyOut, 0) + ' ชิ้น', desc: 'ยอดค้างติดตัว', icon: '📦', color: '#8b5cf6' }
           ].map((stat, idx) => (
-            <div key={idx} style={{
-              padding: '8px 10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 10,
-              position: 'relative',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-            }}>
+            <div key={idx} 
+              onClick={() => setSelectedStatKey(stat.key)}
+              style={{
+                padding: '8px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#fff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 10,
+                position: 'relative',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.borderColor = stat.color;
+                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)';
+              }}
+            >
               {stat.pulse && (
                 <span className="pulse-badge" style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
               )}
@@ -1779,6 +1794,62 @@ export default function IpadOnsiteTest() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
+  const [selectedStatKey, setSelectedStatKey] = useState(null);
+
+  const getStatModalData = () => {
+    switch (selectedStatKey) {
+      case 'all':
+        return {
+          title: 'ตั๋วงานทั้งหมด',
+          icon: '📋',
+          color: '#6366f1',
+          type: 'tickets',
+          items: assignedTickets
+        };
+      case 'pending':
+        return {
+          title: 'งานรอตอบรับ',
+          icon: '⌛',
+          color: '#ef4444',
+          type: 'tickets',
+          items: pendingAcceptTickets
+        };
+      case 'inprogress':
+        return {
+          title: 'กำลังดำเนินการ',
+          icon: '🔧',
+          color: '#f59e0b',
+          type: 'tickets',
+          items: assignedTickets.filter(t => t.status === 'In Progress' && t.accepted !== false)
+        };
+      case 'overdue':
+        return {
+          title: 'งานเกินกำหนด',
+          icon: '⚠️',
+          color: '#ef4444',
+          type: 'tickets',
+          items: overdueTickets
+        };
+      case 'closed':
+        return {
+          title: 'งานที่ปิดแล้ว',
+          icon: '✓',
+          color: '#10b981',
+          type: 'tickets',
+          items: assignedTickets.filter(t => t.status === 'Closed' || t.status === 'Done' || t.status === 'Resolved')
+        };
+      case 'withdrawn':
+        return {
+          title: 'อุปกรณ์ที่เบิก (ค้างติดตัว)',
+          icon: '📦',
+          color: '#8b5cf6',
+          type: 'inventory',
+          items: staffWithdrawnItems
+        };
+      default:
+        return null;
+    }
+  };
 
   /* ── State: Activity log ── */
   const [activityLog, setActivityLog] = useState([]);
@@ -3299,6 +3370,180 @@ export default function IpadOnsiteTest() {
               <button onClick={() => setShowEmailModal(false)} style={{ ...btnStyle, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>ยกเลิก</button>
               <button onClick={handleConfirmSendReport} style={{ ...btnStyle, background: 'linear-gradient(135deg,#16a34a,#22c55e)', color: '#fff', border: 'none' }}>ส่ง Email & ปิดงาน</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Stats Detail Modal ═══ */}
+      {selectedStatKey && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            zIndex: 999999, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            background: 'rgba(0,0,0,0.5)', 
+            backdropFilter: 'blur(3px)',
+            fontFamily: 'Prompt, sans-serif'
+          }}
+          onClick={() => setSelectedStatKey(null)}
+        >
+          <div 
+            style={{ 
+              width: 680, 
+              maxWidth: '90%',
+              background: '#fff', 
+              borderRadius: 12, 
+              padding: 20, 
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            {(() => {
+              const data = getStatModalData();
+              if (!data) return null;
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: 10, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 20, background: data.color + '12', color: data.color, padding: '4px 8px', borderRadius: 8 }}>{data.icon}</span>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', fontFamily: 'Kanit, sans-serif' }}>{data.title}</div>
+                        <div style={{ fontSize: 10.5, color: '#64748b' }}>รายการทั้งหมดในหมวดหมู่นี้</div>
+                      </div>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedStatKey(null)} 
+                      style={{ background: '#f1f5f9', border: 'none', color: '#475569', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: 13, fontWeight: 'bold' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Body Content */}
+                  <div style={{ overflowY: 'auto', flex: 1, paddingRight: 4 }}>
+                    {data.type === 'inventory' ? (
+                      /* Inventory List */
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569' }}>ประเภท / สินค้า</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569' }}>แบรนด์/รุ่น</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'center', color: '#475569' }}>จำนวนเบิก</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569' }}>ตั๋วงานที่ผูกไว้</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.items.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} style={{ textAlign: 'center', padding: '30px 10px', color: '#94a3b8', fontStyle: 'italic' }}>ไม่มีอุปกรณ์ที่ค้างอยู่ติดตัวช่าง</td>
+                            </tr>
+                          ) : (
+                            data.items.map((item, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700 }}>
+                                  📦 {item.name}
+                                </td>
+                                <td style={{ padding: '8px 10px', color: '#475569' }}>
+                                  {item.brand} / {item.model}
+                                </td>
+                                <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700 }}>
+                                  {item.qtyOut}
+                                </td>
+                                <td style={{ padding: '8px 10px' }}>
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedTicketId(item.ticketId);
+                                      setSelectedStatKey(null);
+                                    }}
+                                    style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, textDecoration: 'underline', padding: 0, cursor: 'pointer', fontFamily: 'Prompt, sans-serif', fontSize: 10.5 }}
+                                  >
+                                    {item.ticketId}: {item.ticketTitle}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    ) : (
+                      /* Tickets List */
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569' }}>Ticket ID</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569' }}>รายละเอียดงาน</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569' }}>ลูกค้า</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'center', color: '#475569' }}>ดิวส่งมอบ</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'center', color: '#475569' }}>สถานะ</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'center', color: '#475569' }}>การจัดการ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.items.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} style={{ textAlign: 'center', padding: '30px 10px', color: '#94a3b8', fontStyle: 'italic' }}>ไม่มีตั๋วงานในหมวดหมู่นี้</td>
+                            </tr>
+                          ) : (
+                            data.items.map((tk) => {
+                              let statusBg = '#f1f5f9';
+                              let statusText = '#475569';
+                              if (tk.accepted === false) { statusBg = '#fee2e2'; statusText = '#ef4444'; }
+                              else if (tk.status === 'New') { statusBg = '#eff6ff'; statusText = '#2563eb'; }
+                              else if (tk.status === 'In Progress') { statusBg = '#fffbeb'; statusText = '#d97706'; }
+                              else if (tk.status === 'Resolved' || tk.status === 'Done') { statusBg = '#f0fdf4'; statusText = '#16a34a'; }
+                              else if (tk.status === 'Closed') { statusBg = '#f8fafc'; statusText = '#64748b'; }
+
+                              return (
+                                <tr key={tk.id} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                                  <td style={{ padding: '8px 10px', fontWeight: 800, color: '#1e40af' }}>{tk.id}</td>
+                                  <td style={{ padding: '8px 10px', fontWeight: 700, color: '#0f172a' }}>{tk.title}</td>
+                                  <td style={{ padding: '8px 10px', color: '#475569' }}>{tk.customer}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{tk.due}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                    <span style={{ background: statusBg, color: statusText, padding: '2px 6px', borderRadius: 4, fontSize: '9px', fontWeight: 700 }}>
+                                      {tk.accepted === false ? 'รอตอบรับ' : tk.status}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedTicketId(tk.id);
+                                        setSelectedStatKey(null);
+                                      }}
+                                      style={{
+                                        background: tk.accepted === false ? '#eff6ff' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                                        color: tk.accepted === false ? '#1e40af' : '#fff',
+                                        border: tk.accepted === false ? '1px solid #bfdbfe' : 'none',
+                                        borderRadius: 4,
+                                        padding: '3px 8px',
+                                        fontSize: '9.5px',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        fontFamily: 'Prompt, sans-serif'
+                                      }}
+                                    >
+                                      {tk.accepted === false ? 'ดูรายละเอียด' : 'บันทึก Onsite'}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
