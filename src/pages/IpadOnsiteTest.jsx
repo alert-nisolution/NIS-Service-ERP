@@ -1517,6 +1517,41 @@ export default function IpadOnsiteTest() {
     return assignedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Done' && t.status !== 'Resolved');
   }, [assignedTickets]);
 
+  const pendingAcceptTickets = useMemo(() => {
+    return assignedTickets.filter(t => t.accepted === false);
+  }, [assignedTickets]);
+
+  const activeTicketsCount = useMemo(() => {
+    return assignedTickets.filter(t => t.accepted !== false && t.status !== 'Closed' && t.status !== 'Done').length;
+  }, [assignedTickets]);
+
+  const inProgressTicketsCount = useMemo(() => {
+    return assignedTickets.filter(t => t.status === 'In Progress' && t.accepted !== false).length;
+  }, [assignedTickets]);
+
+  const overdueTickets = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return assignedTickets.filter(t => t.status !== 'Closed' && t.status !== 'Done' && t.status !== 'Resolved' && t.due && t.due < todayStr);
+  }, [assignedTickets]);
+
+  const closedTicketsCount = useMemo(() => {
+    return assignedTickets.filter(t => t.status === 'Resolved' || t.status === 'Done' || t.status === 'Closed').length;
+  }, [assignedTickets]);
+
+  const staffWithdrawnItems = useMemo(() => {
+    const items = [];
+    assignedTickets.forEach(t => {
+      (t.checkedOutItems || []).forEach(item => {
+        items.push({
+          ...item,
+          ticketId: t.id,
+          ticketTitle: t.title
+        });
+      });
+    });
+    return items;
+  }, [assignedTickets]);
+
   const matchedTicket = allTickets.find(t => t.id === selectedTicketId) || null;
 
   const resolveTicketType = useCallback(() => {
