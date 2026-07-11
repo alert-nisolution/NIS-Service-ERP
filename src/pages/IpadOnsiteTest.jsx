@@ -65,11 +65,11 @@ function SignaturePad({ onSign, width = 440, height = 130 }) {
 const btnStyle = { padding: '6px 14px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' };
 
 const STAFF_MEMBERS = [
-  { name: 'Krit P.', role: 'Senior Network & Security Engineer', avatar: 'KP', email: 'krit.p@nis.co.th', phone: '081-222-3344', username: 'krit', password: 'password123', skills: ['Firewall', 'Network', 'Server'] },
-  { name: 'Nok S.', role: 'Network & System Engineer', avatar: 'NS', email: 'nok.s@nis.co.th', phone: '085-555-6677', username: 'nok', password: 'password123', skills: ['Network', 'WiFi', 'CCTV'] },
-  { name: 'Pom T.', role: 'System & Virtualization Engineer', avatar: 'PT', email: 'pom.t@nis.co.th', phone: '089-888-9900', username: 'pom', password: 'password123', skills: ['Server', 'Windows AD', 'VMware'] },
-  { name: 'Ann K.', role: 'Software & Application Support Specialist', avatar: 'AK', email: 'ann.k@nis.co.th', phone: '084-444-5566', username: 'ann', password: 'password123', skills: ['Software', 'Monitoring'] },
-  { name: 'Art W.', role: 'Desktop & Technical Support Engineer', avatar: 'AW', email: 'art.w@nis.co.th', phone: '087-777-8899', username: 'art', password: 'password123', skills: ['PC&Notebook', 'Support'] }
+  { name: 'Krit P.', role: 'Senior Network & Security Engineer', avatar: 'KP', email: 'krit.p@nis.co.th', phone: '081-222-3344', username: 'krit', password: '123', skills: ['Firewall', 'Network', 'Server'] },
+  { name: 'Nok S.', role: 'Network & System Engineer', avatar: 'NS', email: 'nok.s@nis.co.th', phone: '085-555-6677', username: 'nok', password: '123', skills: ['Network', 'WiFi', 'CCTV'] },
+  { name: 'Pom T.', role: 'System & Virtualization Engineer', avatar: 'PT', email: 'pom.t@nis.co.th', phone: '089-888-9900', username: 'pom', password: '123', skills: ['Server', 'Windows AD', 'VMware'] },
+  { name: 'Ann K.', role: 'Software & Application Support Specialist', avatar: 'AK', email: 'ann.k@nis.co.th', phone: '084-444-5566', username: 'ann', password: '123', skills: ['Software', 'Monitoring'] },
+  { name: 'Art W.', role: 'Desktop & Technical Support Engineer', avatar: 'AW', email: 'art.w@nis.co.th', phone: '087-777-8899', username: 'art', password: '123', skills: ['PC&Notebook', 'Support'] }
 ];
 
 const avatarColors = {
