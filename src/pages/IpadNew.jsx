@@ -934,6 +934,7 @@ function TasksView({ user }) {
   const allTickets = projects.flatMap(p => (p.tickets || []).map(t => ({ ...t, projectName: p.name, customer: p.customer })));
   const myTickets  = user.role === 'manager' ? allTickets : allTickets.filter(t => t.assignee === user.name);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const filtered = statusFilter === 'all' ? myTickets : myTickets.filter(t => {
     if (statusFilter === 'open')    return ['Open','Assigned'].includes(t.status);
@@ -971,7 +972,7 @@ function TasksView({ user }) {
             {filtered.length === 0 ? (
               <tr><td colSpan={6} style={{ padding:'24px', textAlign:'center', color:C.textSub }}>ไม่มีตั๋วงาน</td></tr>
             ) : filtered.map((t,i) => (
-              <tr key={t.id} style={{ borderTop:`1px solid ${C.border}`, background: i%2===0?C.surface:'#FAFBFC' }}>
+              <tr key={t.id} onClick={() => setSelectedTask(t)} style={{ borderTop:`1px solid ${C.border}`, background: i%2===0?C.surface:'#FAFBFC', cursor:'pointer' }}>
                 <td style={{ padding:'10px 14px', fontWeight:700, color:C.primary }}>{t.id}</td>
                 <td style={{ padding:'10px 14px', color:C.text, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</td>
                 <td style={{ padding:'10px 14px', color:C.textSub, maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.customer || t.projectName}</td>
@@ -992,6 +993,47 @@ function TasksView({ user }) {
           </tbody>
         </table>
       </div>
+
+      {/* ═══ Task Detail Modal ═══ */}
+      {selectedTask && (
+        <div style={{ position:'absolute', inset:0, zIndex:999999, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.5)', backdropFilter:'blur(3px)' }} onClick={()=>setSelectedTask(null)}>
+          <div style={{ width:620, maxWidth:'94%', background:C.surface, borderRadius:20, padding:24, boxShadow:'0 20px 50px rgba(0,0,0,0.3)', maxHeight:'85vh', display:'flex', flexDirection:'column' }} onClick={e=>e.stopPropagation()}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <div style={{ fontSize:18, fontWeight:700, color:C.text }}>รายละเอียดตั๋วงาน: {selectedTask.id}</div>
+              <button onClick={()=>setSelectedTask(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:C.textSub }}>✕</button>
+            </div>
+            <div style={{ overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:16, paddingRight:8 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>ชื่องาน</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{selectedTask.title}</div>
+                </div>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>ลูกค้า / โปรเจกต์</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{selectedTask.customer || selectedTask.projectName}</div>
+                </div>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>ผู้รับผิดชอบ (ช่าง)</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{selectedTask.assignee || '-'}</div>
+                </div>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>สถานะ</div>
+                  <div><StatusBadge status={selectedTask.status} /></div>
+                </div>
+              </div>
+              <div style={{ background:C.bg, padding:16, borderRadius:12, border:`1px solid ${C.border}` }}>
+                <div style={{ fontSize:12, fontWeight:700, color:C.text, marginBottom:8 }}>รายละเอียดเพิ่มเติม</div>
+                <div style={{ fontSize:13, color:C.text, lineHeight:'1.5' }}>
+                  {selectedTask.description || 'ไม่มีรายละเอียดเพิ่มเติม'}
+                </div>
+              </div>
+              <a href={`/ipad-onsite-test?ticketId=${selectedTask.id}`} style={{ display:'block', textAlign:'center', background:C.primary, color:'#fff', textDecoration:'none', padding:'12px', borderRadius:12, fontWeight:700, marginTop:10 }}>
+                ดำเนินการ (เปิดใน Onsite Tool)
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1001,6 +1043,7 @@ function TasksView({ user }) {
 ───────────────────────────────────────────── */
 function ReportsView() {
   const reports = getServiceReports();
+  const [selectedReport, setSelectedReport] = useState(null);
   return (
     <div style={{ flex:1, overflowY:'auto', padding:'20px 24px 100px', display:'flex', flexDirection:'column', gap:16 }}>
       <div style={{ fontSize:16, fontWeight:700, color:C.text }}>📄 Service Reports ({reports.length})</div>
@@ -1017,7 +1060,7 @@ function ReportsView() {
             {reports.length === 0 ? (
               <tr><td colSpan={7} style={{ padding:'24px', textAlign:'center', color:C.textSub }}>ยังไม่มี Service Report</td></tr>
             ) : reports.map((r,i) => (
-              <tr key={r.id} style={{ borderTop:`1px solid ${C.border}`, background:i%2===0?C.surface:'#FAFBFC' }}>
+              <tr key={r.id} onClick={() => setSelectedReport(r)} style={{ borderTop:`1px solid ${C.border}`, background:i%2===0?C.surface:'#FAFBFC', cursor:'pointer' }}>
                 <td style={{ padding:'10px 14px', fontWeight:700, color:C.primary }}>{r.id}</td>
                 <td style={{ padding:'10px 14px', color:C.text }}>{r.ticketId}</td>
                 <td style={{ padding:'10px 14px', color:C.textSub }}>{r.customer}</td>
@@ -1030,6 +1073,50 @@ function ReportsView() {
           </tbody>
         </table>
       </div>
+
+      {/* ═══ Report Detail Modal ═══ */}
+      {selectedReport && (
+        <div style={{ position:'absolute', inset:0, zIndex:999999, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.5)', backdropFilter:'blur(3px)' }} onClick={()=>setSelectedReport(null)}>
+          <div style={{ width:620, maxWidth:'94%', background:C.surface, borderRadius:20, padding:24, boxShadow:'0 20px 50px rgba(0,0,0,0.3)', maxHeight:'85vh', display:'flex', flexDirection:'column' }} onClick={e=>e.stopPropagation()}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <div style={{ fontSize:18, fontWeight:700, color:C.text }}>รายละเอียดรายงาน: {selectedReport.id}</div>
+              <button onClick={()=>setSelectedReport(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:C.textSub }}>✕</button>
+            </div>
+            <div style={{ overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:16, paddingRight:8 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>รหัสตั๋วงานอ้างอิง</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{selectedReport.ticketId}</div>
+                </div>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>ลูกค้า</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{selectedReport.customer}</div>
+                </div>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>ช่างผู้ดำเนินการ</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{selectedReport.engineer}</div>
+                </div>
+                <div style={{ background:C.bg, padding:12, borderRadius:12, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:11, color:C.textSub, marginBottom:4 }}>ประเภท / สถานะ</div>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <span style={{ fontSize:13, fontWeight:600, color:C.text }}>{selectedReport.type}</span>
+                    <StatusBadge status={selectedReport.status} />
+                  </div>
+                </div>
+              </div>
+              <div style={{ background:C.bg, padding:16, borderRadius:12, border:`1px solid ${C.border}` }}>
+                <div style={{ fontSize:12, fontWeight:700, color:C.text, marginBottom:8 }}>สรุปผลการปฏิบัติงาน (Summary)</div>
+                <div style={{ fontSize:13, color:C.text, lineHeight:'1.5' }}>
+                  {selectedReport.summary || 'ไม่มีการระบุสรุปผล'}
+                </div>
+              </div>
+              <a href={`/ipad-onsite-test?ticketId=${selectedReport.ticketId}`} style={{ display:'block', textAlign:'center', background:C.primary, color:'#fff', textDecoration:'none', padding:'12px', borderRadius:12, fontWeight:700, marginTop:10 }}>
+                ดูประวัติตั๋วนี้ (เปิดใน Onsite Tool)
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
