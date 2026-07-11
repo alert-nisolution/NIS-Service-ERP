@@ -1275,12 +1275,30 @@ export default function IpadOnsiteTest() {
                     const isToday = new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonth && new Date().getDate() === d;
                     
                     cells.push(
-                      <div key={`day-${d}`} style={{ background: '#fff', padding: 2, minHeight: 42, display: 'flex', flexDirection: 'column', border: isToday ? '1.5px solid #2563eb' : 'none' }}>
+                      <div key={`day-${d}`} style={{ background: '#fff', padding: 2, minHeight: 60, display: 'flex', flexDirection: 'column', border: isToday ? '1.5px solid #2563eb' : 'none', boxShadow: 'inset 0 0 0 0.5px #cbd5e1' }}>
                         <span style={{ alignSelf: 'flex-end', fontSize: '8.5px', fontWeight: 700, color: isToday ? '#2563eb' : '#64748b' }}>{d}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, overflowY: 'auto', maxHeight: 26 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflowY: 'auto', maxHeight: 45 }}>
                           {dayTickets.map(tk => (
-                            <div key={tk.id} onClick={() => setSelectedTicketId(tk.id)} style={{ fontSize: '7px', background: tk.priority === 'High' ? '#fee2e2' : '#eff6ff', color: tk.priority === 'High' ? '#ef4444' : '#2563eb', padding: '0.5px 1px', borderRadius: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, cursor: 'pointer' }}>
-                              {tk.id}
+                            <div 
+                              key={tk.id} 
+                              onClick={() => setSelectedTicketId(tk.id)} 
+                              title={`🎫 ${tk.id}: ${tk.title}\n🏢 ลูกค้า: ${tk.customer}\nสถานะ: ${tk.status}\nวันเข้า Onsite: ${tk.onsiteDate || tk.due}`}
+                              style={{ 
+                                fontSize: '7.5px', 
+                                background: tk.priority === 'High' ? '#fee2e2' : '#eff6ff', 
+                                color: tk.priority === 'High' ? '#ef4444' : '#2563eb', 
+                                padding: '1px 3px', 
+                                borderRadius: 3, 
+                                whiteSpace: 'nowrap', 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis', 
+                                fontWeight: 700, 
+                                cursor: 'pointer',
+                                borderLeft: `2.5px solid ${tk.priority === 'High' ? '#dc2626' : '#2563eb'}`,
+                                lineHeight: '1.2'
+                              }}
+                            >
+                              {tk.id} | {tk.title}
                             </div>
                           ))}
                         </div>
