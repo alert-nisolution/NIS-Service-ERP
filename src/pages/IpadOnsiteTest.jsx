@@ -1272,22 +1272,22 @@ export default function IpadOnsiteTest() {
                 ✅ โน้ตบันทึกช่วยจำส่วนตัว (Personal Notes)
               </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <input type="text" value={newTodoText} onChange={e => setNewTodoText(e.target.value)} placeholder="พิมพ์บันทึกช่วยจำ..." onKeyDown={e => { if (e.key === 'Enter') handleAddTodo(); }}
-                    style={{ flex: 1, fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
-                  <button onClick={handleAddTodo} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif', whiteSpace: 'nowrap' }}>
-                    + เพิ่ม
-                  </button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>
+                <input type="text" value={newTodoText} onChange={e => setNewTodoText(e.target.value)} placeholder="พิมพ์บันทึกช่วยจำ..." onKeyDown={e => { if (e.key === 'Enter') handleAddTodo(); }}
+                  style={{ flex: 1.5, fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1.2, minWidth: 165 }}>
                   <span style={{ fontSize: '9.5px', color: '#64748b', whiteSpace: 'nowrap' }}>🔔 แจ้งเตือน:</span>
                   <input type="datetime-local" value={newTodoRemindDateTime} onChange={e => setNewTodoRemindDateTime(e.target.value)}
-                    style={{ flex: 1, fontSize: '10px', padding: '4px 7px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif', colorScheme: 'light' }} />
+                    style={{ flex: 1, fontSize: '10px', padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif', colorScheme: 'light', minWidth: 110 }} />
                   {newTodoRemindDateTime && (
-                    <button onClick={() => setNewTodoRemindDateTime('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
+                    <button onClick={() => setNewTodoRemindDateTime('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '11px', padding: 2 }}>✕</button>
                   )}
                 </div>
+
+                <button onClick={handleAddTodo} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif', whiteSpace: 'nowrap' }}>
+                  + เพิ่ม
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
@@ -1413,13 +1413,25 @@ export default function IpadOnsiteTest() {
                     </div>
                   </div>
 
-                  <div>
-                    <label style={{ fontSize: '9px', color: '#64748b' }}>วิธีการ Support</label>
-                    <select value={reqSupportMethod} onChange={e => setReqSupportMethod(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
-                      <option value="Onsite">Onsite</option>
-                      <option value="Remote">Remote</option>
-                      <option value="Telephone">Telephone</option>
-                    </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                    <div>
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>วิธีการ Support</label>
+                      <select value={reqSupportMethod} onChange={e => setReqSupportMethod(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
+                        <option value="Onsite">Onsite</option>
+                        <option value="Remote">Remote</option>
+                        <option value="Telephone">Telephone</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>ผูกกับตั๋วงาน / หัวข้ออื่นๆ</label>
+                      <select value={reqParentTicketId} onChange={e => setReqParentTicketId(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
+                        <option value="">-- ไม่ผูกตั๋ว (ตั๋วใหม่) --</option>
+                        <option value="การทดสอบงาน">🛠️ การทดสอบงาน (Test Onsite)</option>
+                        {allTickets.map(tk => (
+                          <option key={tk.id} value={tk.id}>{tk.id} - {tk.title.slice(0, 15)}...</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
@@ -1460,10 +1472,10 @@ export default function IpadOnsiteTest() {
           )}
 
           {activeTab === 'inventory' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 6 }}>
-              {/* Warehouse stock */}
-              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ fontWeight: 800, fontSize: '10.5px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: 4, marginBottom: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Warehouse stock (Top - Full Width) */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontWeight: 800, fontSize: '11px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: 4, marginBottom: 6, fontFamily: 'Prompt, sans-serif' }}>
                   📦 อุปกรณ์ในคลัง NIS Warehouse
                 </div>
                 
@@ -1477,8 +1489,8 @@ export default function IpadOnsiteTest() {
                         type="button"
                         onClick={() => setSelectedCategory(cat)}
                         style={{
-                          fontSize: '8.5px',
-                          padding: '3px 6px',
+                          fontSize: '9.5px',
+                          padding: '3px 8px',
                           borderRadius: 20,
                           border: isActive ? '1px solid #2563eb' : '1px solid #cbd5e1',
                           background: isActive ? '#dbeafe' : '#f8fafc',
@@ -1495,13 +1507,13 @@ export default function IpadOnsiteTest() {
                   })}
                 </div>
 
-                <div style={{ overflowY: 'auto', flex: 1, maxHeight: 200 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                <div style={{ overflowY: 'auto', maxHeight: 180 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Prompt, sans-serif' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '4px 2px' }}>ประเภท / สินค้า</th>
-                        <th style={{ padding: '4px 2px' }}>รุ่น</th>
-                        <th style={{ padding: '4px 2px', textAlign: 'center' }}>คงคลัง</th>
+                        <th style={{ padding: '6px 8px', color: '#475569' }}>ประเภท / สินค้า</th>
+                        <th style={{ padding: '6px 8px', color: '#475569' }}>รุ่น</th>
+                        <th style={{ padding: '6px 8px', color: '#475569', textAlign: 'center' }}>คงคลัง</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1509,14 +1521,14 @@ export default function IpadOnsiteTest() {
                         .filter(s => selectedCategory === 'All' || s.category === selectedCategory)
                         .map(s => (
                           <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '4px 2px' }}>
-                              <span style={{ display: 'inline-block', fontSize: '7.5px', padding: '1px 3.5px', borderRadius: 4, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', marginRight: 4, fontWeight: 700 }}>
+                            <td style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: '8px', padding: '1.5px 4px', borderRadius: 4, background: '#e2e8f0', color: '#1e293b', border: '1px solid #cbd5e1', fontWeight: 700, fontFamily: 'Prompt, sans-serif' }}>
                                 {s.category || 'N/A'}
                               </span>
-                              <span style={{ fontWeight: 700 }}>{s.name}</span>
+                              <span style={{ fontWeight: 700, color: '#0f172a' }}>{s.name}</span>
                             </td>
-                            <td style={{ padding: '4px 2px', fontFamily: 'monospace' }}>{s.model}</td>
-                            <td style={{ padding: '4px 2px', textAlign: 'center', fontWeight: 700, color: s.qty > 0 ? '#16a34a' : '#dc2626' }}>{s.qty}</td>
+                            <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#334155' }}>{s.model}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 800, color: s.qty > 0 ? '#16a34a' : '#dc2626' }}>{s.qty}</td>
                           </tr>
                         ))}
                     </tbody>
@@ -1524,17 +1536,17 @@ export default function IpadOnsiteTest() {
                 </div>
               </div>
 
-              {/* Spares Returns and Intake */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {/* Returns */}
+              {/* Bottom Area: 2 Columns */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+                {/* Returns (Bottom Left) */}
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8 }}>
-                  <div style={{ fontWeight: 800, fontSize: '10.5px', color: '#0f172a', marginBottom: 6, borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>
+                  <div style={{ fontWeight: 800, fontSize: '10.5px', color: '#0f172a', marginBottom: 6, borderBottom: '1px solid #f1f5f9', paddingBottom: 4, fontFamily: 'Prompt, sans-serif' }}>
                     ↩️ ค้างคืนคลัง
                   </div>
                   
                   <div style={{ maxHeight: 110, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {staffWithdrawnItems.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '10px 0', fontSize: '9.5px', color: '#94a3b8', fontStyle: 'italic' }}>
+                      <div style={{ textAlign: 'center', padding: '12px 0', fontSize: '9.5px', color: '#94a3b8', fontStyle: 'italic', fontFamily: 'Prompt, sans-serif' }}>
                         ไม่มีของค้างส่งคืน
                       </div>
                     ) : (
@@ -1542,14 +1554,14 @@ export default function IpadOnsiteTest() {
                         const key = `${item.id}-${item.ticketId}`;
                         const inputQty = returnQuantities[key] || '';
                         return (
-                          <div key={key} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 4, padding: 4, fontSize: '9px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                          <div key={key} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 4, padding: 4, fontSize: '9.5px', fontFamily: 'Prompt, sans-serif' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 2 }}>
                               <span style={{ color: '#2563eb' }}>{item.ticketId}</span>
-                              <span>เบิก: {item.qtyOut}</span>
+                              <span style={{ color: '#475569' }}>เบิก: {item.qtyOut}</span>
                             </div>
-                            <div style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.model}</div>
+                            <div style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{item.model}</div>
                             
-                            <div style={{ display: 'flex', gap: 2, marginTop: 2, alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                               <input
                                 type="number"
                                 placeholder="คืน..."
@@ -1560,12 +1572,12 @@ export default function IpadOnsiteTest() {
                                   ...prev,
                                   [key]: Math.max(1, Math.min(item.qtyOut, parseInt(e.target.value) || ''))
                                 }))}
-                                style={{ width: 40, padding: '2px', fontSize: '8.5px', border: '1px solid #cbd5e1', borderRadius: 3 }}
+                                style={{ width: 50, padding: '3px 5px', fontSize: '9px', border: '1px solid #cbd5e1', borderRadius: 4, fontFamily: 'Prompt, sans-serif' }}
                               />
                               <button
                                 onClick={() => handleReturnStock(item, inputQty)}
                                 disabled={!inputQty}
-                                style={{ flex: 1, padding: '3px', fontSize: '8.5px', background: '#475569', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}
+                                style={{ flex: 1, padding: '4px 6px', fontSize: '9px', background: '#475569', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'Prompt, sans-serif', fontWeight: 700 }}
                               >
                                 คืนคลัง
                               </button>
@@ -1577,36 +1589,39 @@ export default function IpadOnsiteTest() {
                   </div>
                 </div>
 
-                {/* Intake */}
+                {/* Intake (Bottom Right) */}
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8 }}>
+                  <div style={{ fontWeight: 800, fontSize: '10.5px', color: '#0f172a', marginBottom: 6, borderBottom: '1px solid #f1f5f9', paddingBottom: 4, fontFamily: 'Prompt, sans-serif' }}>
+                    📥 นำเข้าสต็อก
+                  </div>
                   <form onSubmit={handleAddStock} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 2 }}>
                       <select
                         value={addForm.category}
                         onChange={e => setAddForm(prev => ({ ...prev, category: e.target.value }))}
                         required
-                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}
+                        style={{ fontSize: '9.5px', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}
                       >
                         {['Firewall', 'Switch', 'WiFi', 'CCTV', 'Lan&Cable', 'Server'].map(cat => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
                       <input placeholder="ชื่ออุปกรณ์" value={addForm.name} onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))} required
-                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                        style={{ fontSize: '9.5px', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                       <input placeholder="แบรนด์" value={addForm.brand} onChange={e => setAddForm(prev => ({ ...prev, brand: e.target.value }))} required
-                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                        style={{ fontSize: '9.5px', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
                       <input placeholder="รุ่น" value={addForm.model} onChange={e => setAddForm(prev => ({ ...prev, model: e.target.value }))} required
-                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                        style={{ fontSize: '9.5px', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 2 }}>
                       <input placeholder="S/N" value={addForm.sn} onChange={e => setAddForm(prev => ({ ...prev, sn: e.target.value }))}
-                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                        style={{ fontSize: '9.5px', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
                       <input type="number" min="1" placeholder="จำนวน" value={addForm.qty} onChange={e => setAddForm(prev => ({ ...prev, qty: Math.max(1, parseInt(e.target.value) || 1) }))} required
-                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                        style={{ fontSize: '9.5px', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
                     </div>
-                    <button type="submit" style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 3, padding: '4px 0', fontSize: '8.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
+                    <button type="submit" style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 0', fontSize: '9.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
                       📥 นำเข้าสต็อก
                     </button>
                   </form>
