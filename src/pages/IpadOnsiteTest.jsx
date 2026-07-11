@@ -369,6 +369,7 @@ export default function IpadOnsiteTest() {
   const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'kanban' | 'calendar' | 'checklist' | 'request' | 'inventory'
   const [personalChecklists, setPersonalChecklists] = useState(() => getPersonalChecklists());
   const [newTodoText, setNewTodoText] = useState('');
+  const [newTodoRemindDate, setNewTodoRemindDate] = useState('');
   const [stockList, setStockList] = useState(() => getNisStock());
   
   // Return spares state
@@ -442,6 +443,7 @@ export default function IpadOnsiteTest() {
     const newTodo = {
       id: Date.now(),
       text: newTodoText.trim(),
+      remindDate: newTodoRemindDate || null,
       done: false
     };
     const updated = {
@@ -451,6 +453,7 @@ export default function IpadOnsiteTest() {
     setPersonalChecklists(updated);
     savePersonalChecklists(updated);
     setNewTodoText('');
+    setNewTodoRemindDate('');
   };
 
   const handleToggleTodo = (todoId) => {
@@ -1255,6 +1258,8 @@ export default function IpadOnsiteTest() {
               <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
                 <input type="text" value={newTodoText} onChange={e => setNewTodoText(e.target.value)} placeholder="พิมพ์บันทึกช่วยจำ..." onKeyDown={e => { if (e.key === 'Enter') handleAddTodo(); }}
                   style={{ flex: 1, fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                <input type="date" value={newTodoRemindDate} onChange={e => setNewTodoRemindDate(e.target.value)}
+                  style={{ fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif', width: 115 }} />
                 <button onClick={handleAddTodo} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
                   เพิ่ม
                 </button>
@@ -1269,9 +1274,33 @@ export default function IpadOnsiteTest() {
                   (personalChecklists[loggedInStaff.name] || []).map(todo => (
                     <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
                       <input type="checkbox" checked={todo.done} onChange={() => handleToggleTodo(todo.id)} style={{ width: 'auto', accentColor: '#1e40af', cursor: 'pointer' }} />
-                      <span style={{ flex: 1, fontSize: '11px', textDecoration: todo.done ? 'line-through' : '', color: todo.done ? '#94a3b8' : '#334155' }}>
-                        {todo.text}
-                      </span>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '11px', textDecoration: todo.done ? 'line-through' : '', color: todo.done ? '#94a3b8' : '#334155' }}>
+                          {todo.text}
+                        </span>
+                        {todo.remindDate && (
+                          <span style={{
+                            fontSize: '8.5px',
+                            marginLeft: 6,
+                            padding: '2px 5px',
+                            borderRadius: 4,
+                            fontWeight: 700,
+                            fontFamily: 'Prompt, sans-serif',
+                            ...(() => {
+                              const todayStr = new Date().toISOString().split('T')[0];
+                              if (todo.remindDate === todayStr) {
+                                return { color: '#ef4444', background: '#fee2e2', border: '1px solid #fca5a5' };
+                              } else if (todo.remindDate < todayStr) {
+                                return { color: '#94a3b8', background: '#f1f5f9', border: '1px solid #e2e8f0' };
+                              } else {
+                                return { color: '#ea580c', background: '#fff7ed', border: '1px solid #ffedd5' };
+                              }
+                            })()
+                          }}>
+                            🔔 {todo.remindDate === new Date().toISOString().split('T')[0] ? 'ด่วนวันนี้!' : `เตือน: ${todo.remindDate}`}
+                          </span>
+                        )}
+                      </div>
                       <button onClick={() => handleDeleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '10px', padding: 2 }}>✕</button>
                     </div>
                   ))
