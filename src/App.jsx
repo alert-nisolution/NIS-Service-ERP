@@ -13,6 +13,7 @@ import ServiceTeam from './pages/ServiceTeam';
 import SalesTeam from './pages/SalesTeam';
 import ClaimsPortal from './pages/ClaimsPortal';
 import IpadOnsiteTest from './pages/IpadOnsiteTest';
+import IpadNew from './pages/IpadNew';
 import StaffPortal from './pages/StaffPortal';
 import ServiceReports from './pages/ServiceReports';
 
@@ -35,6 +36,7 @@ function App() {
           <Route path="sales-team" element={<SalesTeam />} />
           <Route path="claims" element={<ClaimsPortal />} />
           <Route path="ipad-onsite-test" element={<IpadOnsiteTest />} />
+          <Route path="ipad-new" element={<IpadNew />} />
           <Route path="staff-portal" element={<StaffPortal />} />
           <Route path="service-reports" element={<ServiceReports />} />
           <Route path="system-config" element={<SystemConfig />} />

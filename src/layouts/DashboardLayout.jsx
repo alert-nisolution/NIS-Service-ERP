@@ -44,6 +44,9 @@ const testItems = [
   { label: 'iPad Onsite Form (Test)', path: '/ipad-onsite-test', icon: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
   )},
+  { label: '✨ iPad New Design', path: '/ipad-new', icon: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 7h6M9 11h6M9 15h4"/><circle cx="18" cy="18" r="5" fill="#4F46E5" stroke="none"/><path d="M15.5 18l1.5 1.5 3-3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  )},
 ];
 
 const settingItems = [
