@@ -129,14 +129,35 @@ const defaultProjects = [
 
 // ── NIS Warehouse Stock List (for Device Replacement) ──
 const defaultNisStock = [
-  { id:'STK-001', name:'FortiGate 60F', brand:'Fortinet', model:'FG-60F', sn:'FG60FT0001', qty:3, status:'Available' },
-  { id:'STK-002', name:'FortiGate 100F', brand:'Fortinet', model:'FG-100F', sn:'FG100F0001', qty:2, status:'Available' },
-  { id:'STK-003', name:'FortiSwitch 124F-POE', brand:'Fortinet', model:'FS-124F-POE', sn:'FS124P0001', qty:5, status:'Available' },
-  { id:'STK-004', name:'FortiAP 231F', brand:'Fortinet', model:'FAP-231F', sn:'FAP231F0001', qty:8, status:'Available' },
-  { id:'STK-005', name:'Cisco Catalyst 9300-24P', brand:'Cisco', model:'C9300-24P', sn:'CS9300P0001', qty:1, status:'Available' },
-  { id:'STK-006', name:'HP ProLiant DL360 Gen10', brand:'HPE', model:'DL360-G10', sn:'HPDL360G01', qty:1, status:'Reserved' },
-  { id:'STK-007', name:'UTP Cat6 Cable (305m)', brand:'AMP', model:'CAT6-305M', sn:'-', qty:12, status:'Available' },
-  { id:'STK-008', name:'Fiber Patch Cord LC-LC SM 3m', brand:'Panduit', model:'FPC-LCLC-3M', sn:'-', qty:20, status:'Available' },
+  // Firewall
+  { id:'STK-001', name:'FortiGate 60F', brand:'Fortinet', model:'FG-60F', sn:'FG60FT0001', qty:3, category:'Firewall', status:'Available' },
+  { id:'STK-002', name:'FortiGate 100F', brand:'Fortinet', model:'FG-100F', sn:'FG100F0001', qty:2, category:'Firewall', status:'Available' },
+  { id:'STK-009', name:'Palo Alto PA-440', brand:'Palo Alto', model:'PA-440', sn:'PA440T9988', qty:1, category:'Firewall', status:'Available' },
+  
+  // Switch
+  { id:'STK-003', name:'FortiSwitch 124F-POE', brand:'Fortinet', model:'FS-124F-POE', sn:'FS124P0001', qty:5, category:'Switch', status:'Available' },
+  { id:'STK-005', name:'Cisco Catalyst 9300-24P', brand:'Cisco', model:'C9300-24P', sn:'CS9300P0001', qty:1, category:'Switch', status:'Available' },
+  { id:'STK-010', name:'Aruba CX 6100 24G', brand:'Aruba', model:'JL678A', sn:'AR6100X8877', qty:3, category:'Switch', status:'Available' },
+  
+  // WiFi
+  { id:'STK-004', name:'FortiAP 231F', brand:'Fortinet', model:'FAP-231F', sn:'FAP231F0001', qty:8, category:'WiFi', status:'Available' },
+  { id:'STK-011', name:'Aruba AP-505', brand:'Aruba', model:'AP-505', sn:'AR505W0022', qty:6, category:'WiFi', status:'Available' },
+  { id:'STK-012', name:'Ubiquiti UniFi U6-Pro', brand:'Ubiquiti', model:'U6-Pro', sn:'UQ6P998844', qty:10, category:'WiFi', status:'Available' },
+  
+  // CCTV
+  { id:'STK-013', name:'Hikvision IP Camera 4MP', brand:'Hikvision', model:'DS-2CD2043G2-I', sn:'HKC2043G0011', qty:15, category:'CCTV', status:'Available' },
+  { id:'STK-014', name:'Dahua NVR 16-Channel', brand:'Dahua', model:'NVR4216-4KS2/L', sn:'DHN4216X0033', qty:4, category:'CCTV', status:'Available' },
+  { id:'STK-015', name:'Bosch Flexidome IP 3000i', brand:'Bosch', model:'NDE-3502-AL', sn:'BS3000D0099', qty:2, category:'CCTV', status:'Available' },
+  
+  // Lan&Cable
+  { id:'STK-007', name:'UTP Cat6 Cable (305m)', brand:'AMP', model:'CAT6-305M', sn:'-', qty:12, category:'Lan&Cable', status:'Available' },
+  { id:'STK-008', name:'Fiber Patch Cord LC-LC SM 3m', brand:'Panduit', model:'FPC-LCLC-3M', sn:'-', qty:20, category:'Lan&Cable', status:'Available' },
+  { id:'STK-016', name:'RJ45 Modular Plugs (100 pack)', brand:'Link', model:'US-1002', sn:'-', qty:25, category:'Lan&Cable', status:'Available' },
+  
+  // Server
+  { id:'STK-006', name:'HP ProLiant DL360 Gen10', brand:'HPE', model:'DL360-G10', sn:'HPDL360G01', qty:1, category:'Server', status:'Reserved' },
+  { id:'STK-017', name:'Dell PowerEdge R750', brand:'Dell', model:'PE-R750-8SFF', sn:'DLPE750S001', qty:2, category:'Server', status:'Available' },
+  { id:'STK-018', name:'Synology NAS RS2421+', brand:'Synology', model:'RS2421+', sn:'SY2421P0022', qty:3, category:'Server', status:'Available' },
 ];
 
 // ── Service Reports ──
@@ -174,6 +195,13 @@ const initDb = () => {
   }
   if (!localStorage.getItem('nis_stock')) {
     localStorage.setItem('nis_stock', JSON.stringify(defaultNisStock));
+  } else {
+    try {
+      const parsedStock = JSON.parse(localStorage.getItem('nis_stock'));
+      if (Array.isArray(parsedStock) && !parsedStock.some(item => item.category)) {
+        localStorage.setItem('nis_stock', JSON.stringify(defaultNisStock));
+      }
+    } catch (e) {}
   }
   if (!localStorage.getItem('nis_service_reports')) {
     localStorage.setItem('nis_service_reports', JSON.stringify(defaultServiceReports));

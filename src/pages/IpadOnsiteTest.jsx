@@ -377,7 +377,8 @@ export default function IpadOnsiteTest() {
   const [returnHistory, setReturnHistory] = useState([]);
   
   // Stock intake form state
-  const [addForm, setAddForm] = useState({ name: '', brand: '', model: '', sn: '', qty: 1 });
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [addForm, setAddForm] = useState({ category: 'Firewall', name: '', brand: '', model: '', sn: '', qty: 1 });
 
   // Ticket request states
   const [reqTitle, setReqTitle] = useState('');
@@ -567,6 +568,7 @@ export default function IpadOnsiteTest() {
       model: addForm.model,
       sn: addForm.sn || '-',
       qty: parseInt(addForm.qty) || 1,
+      category: addForm.category || 'Firewall',
       status: 'Available'
     };
 
@@ -575,7 +577,7 @@ export default function IpadOnsiteTest() {
     setStockList(updatedStockList);
 
     // Reset Form
-    setAddForm({ name: '', brand: '', model: '', sn: '', qty: 1 });
+    setAddForm({ category: 'Firewall', name: '', brand: '', model: '', sn: '', qty: 1 });
 
     window.dispatchEvent(new CustomEvent('show-toast', {
       detail: { title: 'นำเข้าสินค้าสำเร็จ', message: `เพิ่ม ${newStockItem.name} จำนวน ${newStockItem.qty} ชิ้น เข้าสต็อกแล้ว`, type: 'success' }
@@ -1464,23 +1466,59 @@ export default function IpadOnsiteTest() {
                 <div style={{ fontWeight: 800, fontSize: '10.5px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', paddingBottom: 4, marginBottom: 6 }}>
                   📦 อุปกรณ์ในคลัง NIS Warehouse
                 </div>
-                <div style={{ overflowY: 'auto', flex: 1, maxHeight: 230 }}>
+                
+                {/* Category Selector Pills */}
+                <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
+                  {['All', 'Firewall', 'Switch', 'WiFi', 'CCTV', 'Lan&Cable', 'Server'].map(cat => {
+                    const isActive = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat)}
+                        style={{
+                          fontSize: '8.5px',
+                          padding: '3px 6px',
+                          borderRadius: 20,
+                          border: isActive ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                          background: isActive ? '#dbeafe' : '#f8fafc',
+                          color: isActive ? '#1e40af' : '#475569',
+                          fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          fontFamily: 'Prompt, sans-serif'
+                        }}
+                      >
+                        {cat === 'All' ? 'ทั้งหมด' : cat}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ overflowY: 'auto', flex: 1, maxHeight: 200 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '4px 2px' }}>สินค้า</th>
+                        <th style={{ padding: '4px 2px' }}>ประเภท / สินค้า</th>
                         <th style={{ padding: '4px 2px' }}>รุ่น</th>
                         <th style={{ padding: '4px 2px', textAlign: 'center' }}>คงคลัง</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {stockList.map(s => (
-                        <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '4px 2px', fontWeight: 700 }}>{s.name}</td>
-                          <td style={{ padding: '4px 2px', fontFamily: 'monospace' }}>{s.model}</td>
-                          <td style={{ padding: '4px 2px', textAlign: 'center', fontWeight: 700 }}>{s.qty}</td>
-                        </tr>
-                      ))}
+                      {stockList
+                        .filter(s => selectedCategory === 'All' || s.category === selectedCategory)
+                        .map(s => (
+                          <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '4px 2px' }}>
+                              <span style={{ display: 'inline-block', fontSize: '7.5px', padding: '1px 3.5px', borderRadius: 4, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', marginRight: 4, fontWeight: 700 }}>
+                                {s.category || 'N/A'}
+                              </span>
+                              <span style={{ fontWeight: 700 }}>{s.name}</span>
+                            </td>
+                            <td style={{ padding: '4px 2px', fontFamily: 'monospace' }}>{s.model}</td>
+                            <td style={{ padding: '4px 2px', textAlign: 'center', fontWeight: 700, color: s.qty > 0 ? '#16a34a' : '#dc2626' }}>{s.qty}</td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
@@ -1542,8 +1580,20 @@ export default function IpadOnsiteTest() {
                 {/* Intake */}
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8 }}>
                   <form onSubmit={handleAddStock} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <input placeholder="ชื่ออุปกรณ์" value={addForm.name} onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))} required
-                      style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                      <select
+                        value={addForm.category}
+                        onChange={e => setAddForm(prev => ({ ...prev, category: e.target.value }))}
+                        required
+                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}
+                      >
+                        {['Firewall', 'Switch', 'WiFi', 'CCTV', 'Lan&Cable', 'Server'].map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      <input placeholder="ชื่ออุปกรณ์" value={addForm.name} onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))} required
+                        style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                       <input placeholder="แบรนด์" value={addForm.brand} onChange={e => setAddForm(prev => ({ ...prev, brand: e.target.value }))} required
                         style={{ fontSize: '9px', padding: '3px 5px', borderRadius: 3, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
