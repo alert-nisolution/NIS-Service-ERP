@@ -1519,18 +1519,32 @@ export default function IpadOnsiteTest() {
                     <tbody>
                       {stockList
                         .filter(s => selectedCategory === 'All' || s.category === selectedCategory)
-                        .map(s => (
-                          <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: '8px', padding: '1.5px 4px', borderRadius: 4, background: '#e2e8f0', color: '#1e293b', border: '1px solid #cbd5e1', fontWeight: 700, fontFamily: 'Prompt, sans-serif' }}>
-                                {s.category || 'N/A'}
-                              </span>
-                              <span style={{ fontWeight: 700, color: '#0f172a' }}>{s.name}</span>
-                            </td>
-                            <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#334155' }}>{s.model}</td>
-                            <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 800, color: s.qty > 0 ? '#16a34a' : '#dc2626' }}>{s.qty}</td>
-                          </tr>
-                        ))}
+                        .map(s => {
+                          const badgeStyle = (() => {
+                            const base = { fontSize: '9px', padding: '2px 5.5px', borderRadius: 4, fontWeight: 700, fontFamily: 'Prompt, sans-serif', border: '1px solid' };
+                            switch (s.category) {
+                              case 'Firewall': return { ...base, background: '#fee2e2', color: '#dc2626', borderColor: '#fca5a5' };
+                              case 'Switch': return { ...base, background: '#dbeafe', color: '#2563eb', borderColor: '#bfdbfe' };
+                              case 'WiFi': return { ...base, background: '#dcfce7', color: '#16a34a', borderColor: '#bbf7d0' };
+                              case 'CCTV': return { ...base, background: '#f3e8ff', color: '#7c3aed', borderColor: '#e9d5ff' };
+                              case 'Lan&Cable': return { ...base, background: '#ffedd5', color: '#ea580c', borderColor: '#fed7aa' };
+                              case 'Server': return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' };
+                              default: return { ...base, background: '#f8fafc', color: '#64748b', borderColor: '#cbd5e1' };
+                            }
+                          })();
+                          return (
+                            <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={badgeStyle}>
+                                  {s.category || 'N/A'}
+                                </span>
+                                <span style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'Prompt, sans-serif', fontSize: '11.5px' }}>{s.name}</span>
+                              </td>
+                              <td style={{ padding: '6px 8px', fontFamily: 'monospace', fontSize: '11px', color: '#334155' }}>{s.model}</td>
+                              <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 800, fontSize: '11.5px', color: s.qty > 0 ? '#16a34a' : '#dc2626' }}>{s.qty}</td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
