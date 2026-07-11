@@ -369,7 +369,7 @@ export default function IpadOnsiteTest() {
   const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'kanban' | 'calendar' | 'checklist' | 'request' | 'inventory'
   const [personalChecklists, setPersonalChecklists] = useState(() => getPersonalChecklists());
   const [newTodoText, setNewTodoText] = useState('');
-  const [newTodoRemindDate, setNewTodoRemindDate] = useState('');
+  const [newTodoRemindDateTime, setNewTodoRemindDateTime] = useState('');
   const [stockList, setStockList] = useState(() => getNisStock());
   
   // Return spares state
@@ -396,6 +396,21 @@ export default function IpadOnsiteTest() {
   const today = useMemo(() => new Date(), []);
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+
+  // Derive sites list from selected project (for ticket request form)
+  const dynamicSites = useMemo(() => {
+    const proj = projectsList.find(p => p.id === reqProject);
+    if (!proj) return ['NIS Office / Remote'];
+    const cust = customersList.find(c => {
+      const cn = (c.name || '').toLowerCase();
+      const pc = (proj.customer || '').toLowerCase();
+      return cn.includes(pc) || pc.includes(cn);
+    });
+    if (cust && cust.locations && cust.locations.length > 0) {
+      return cust.locations.map(loc => `${loc.label} (${loc.address})`);
+    }
+    return [proj.location || 'NIS Office / Remote'];
+  }, [reqProject, projectsList, customersList]);
 
   /* ── Authentication Handlers ── */
   const handleLogin = (e) => {
@@ -443,7 +458,7 @@ export default function IpadOnsiteTest() {
     const newTodo = {
       id: Date.now(),
       text: newTodoText.trim(),
-      remindDate: newTodoRemindDate || null,
+      remindDateTime: newTodoRemindDateTime || null,
       done: false
     };
     const updated = {
@@ -453,7 +468,7 @@ export default function IpadOnsiteTest() {
     setPersonalChecklists(updated);
     savePersonalChecklists(updated);
     setNewTodoText('');
-    setNewTodoRemindDate('');
+    setNewTodoRemindDateTime('');
   };
 
   const handleToggleTodo = (todoId) => {
@@ -1255,14 +1270,22 @@ export default function IpadOnsiteTest() {
                 ✅ โน้ตบันทึกช่วยจำส่วนตัว (Personal Notes)
               </div>
               
-              <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-                <input type="text" value={newTodoText} onChange={e => setNewTodoText(e.target.value)} placeholder="พิมพ์บันทึกช่วยจำ..." onKeyDown={e => { if (e.key === 'Enter') handleAddTodo(); }}
-                  style={{ flex: 1, fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
-                <input type="date" value={newTodoRemindDate} onChange={e => setNewTodoRemindDate(e.target.value)}
-                  style={{ fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif', width: 115 }} />
-                <button onClick={handleAddTodo} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif' }}>
-                  เพิ่ม
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input type="text" value={newTodoText} onChange={e => setNewTodoText(e.target.value)} placeholder="พิมพ์บันทึกช่วยจำ..." onKeyDown={e => { if (e.key === 'Enter') handleAddTodo(); }}
+                    style={{ flex: 1, fontSize: '11px', padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                  <button onClick={handleAddTodo} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Prompt, sans-serif', whiteSpace: 'nowrap' }}>
+                    + เพิ่ม
+                  </button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '9.5px', color: '#64748b', whiteSpace: 'nowrap' }}>🔔 แจ้งเตือน:</span>
+                  <input type="datetime-local" value={newTodoRemindDateTime} onChange={e => setNewTodoRemindDateTime(e.target.value)}
+                    style={{ flex: 1, fontSize: '10px', padding: '4px 7px', borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif', colorScheme: 'light' }} />
+                  {newTodoRemindDateTime && (
+                    <button onClick={() => setNewTodoRemindDateTime('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
@@ -1278,7 +1301,7 @@ export default function IpadOnsiteTest() {
                         <span style={{ fontSize: '11px', textDecoration: todo.done ? 'line-through' : '', color: todo.done ? '#94a3b8' : '#334155' }}>
                           {todo.text}
                         </span>
-                        {todo.remindDate && (
+                        {todo.remindDateTime && (
                           <span style={{
                             fontSize: '8.5px',
                             marginLeft: 6,
@@ -1287,17 +1310,30 @@ export default function IpadOnsiteTest() {
                             fontWeight: 700,
                             fontFamily: 'Prompt, sans-serif',
                             ...(() => {
-                              const todayStr = new Date().toISOString().split('T')[0];
-                              if (todo.remindDate === todayStr) {
-                                return { color: '#ef4444', background: '#fee2e2', border: '1px solid #fca5a5' };
-                              } else if (todo.remindDate < todayStr) {
-                                return { color: '#94a3b8', background: '#f1f5f9', border: '1px solid #e2e8f0' };
+                              const now = new Date();
+                              const remindDt = new Date(todo.remindDateTime);
+                              const diffMs = remindDt - now;
+                              if (diffMs < 0) {
+                                return { color: '#94a3b8', background: '#f1f5f9', border: '1px solid #e2e8f0' }; // overdue
+                              } else if (diffMs < 60 * 60 * 1000) {
+                                return { color: '#ef4444', background: '#fee2e2', border: '1px solid #fca5a5' }; // within 1 hour = urgent
+                              } else if (diffMs < 24 * 60 * 60 * 1000) {
+                                return { color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a' }; // today
                               } else {
-                                return { color: '#ea580c', background: '#fff7ed', border: '1px solid #ffedd5' };
+                                return { color: '#ea580c', background: '#fff7ed', border: '1px solid #ffedd5' }; // future
                               }
                             })()
                           }}>
-                            🔔 {todo.remindDate === new Date().toISOString().split('T')[0] ? 'ด่วนวันนี้!' : `เตือน: ${todo.remindDate}`}
+                            {(() => {
+                              const now = new Date();
+                              const remindDt = new Date(todo.remindDateTime);
+                              const diffMs = remindDt - now;
+                              const thDate = remindDt.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                              const thTime = remindDt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                              if (diffMs < 0) return `🔔 เลยกำหนด ${thDate} ${thTime}`;
+                              if (diffMs < 60 * 60 * 1000) return `🚨 ด่วน! ${thTime} น.`;
+                              return `🔔 ${thDate} ${thTime} น.`;
+                            })()}
                           </span>
                         )}
                       </div>
