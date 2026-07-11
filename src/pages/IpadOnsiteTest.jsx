@@ -386,6 +386,7 @@ export default function IpadOnsiteTest() {
   const [reqSite, setReqSite] = useState('NIS Office / Remote');
   const [reqType, setReqType] = useState('Support');
   const [reqDue, setReqDue] = useState(new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
+  const [reqOnsiteDate, setReqOnsiteDate] = useState(new Date(Date.now() + 2*24*60*60*1000).toISOString().split('T')[0]);
   const [reqDetail, setReqDetail] = useState('');
   const [reqSupportMethod, setReqSupportMethod] = useState('Onsite');
   const [reqParentTicketId, setReqParentTicketId] = useState('');
@@ -517,6 +518,7 @@ export default function IpadOnsiteTest() {
       location: reqSite,
       ticketType: reqType,
       due: reqDue,
+      onsiteDate: reqOnsiteDate,
       detail: reqDetail.trim(),
       supportMethod: reqSupportMethod,
       parentTicketId: reqParentTicketId || '',
@@ -538,6 +540,7 @@ export default function IpadOnsiteTest() {
     setReqSite('NIS Office / Remote');
     setReqType('Support');
     setReqDue(new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]);
+    setReqOnsiteDate(new Date(Date.now() + 2*24*60*60*1000).toISOString().split('T')[0]);
     setReqDetail('');
     setReqSupportMethod('Onsite');
     setReqParentTicketId('');
@@ -1146,7 +1149,10 @@ export default function IpadOnsiteTest() {
                       </div>
                       <div style={{ fontWeight: 700, fontSize: '11.5px', color: '#0f172a', marginBottom: 2 }}>{tk.title}</div>
                       <div style={{ fontSize: '10px', color: '#475569', marginBottom: 1 }}><strong>ลูกค้า:</strong> {tk.customer}</div>
-                      <div style={{ fontSize: '9.5px', color: '#64748b', marginBottom: 6 }}><strong>ดิวส่งมอบ:</strong> {tk.due}</div>
+                      <div style={{ fontSize: '9.5px', color: '#64748b', marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div><strong>ดิวส่งมอบ (Due):</strong> {tk.due}</div>
+                        {tk.onsiteDate && <div style={{ color: '#2563eb', fontWeight: 700 }}><strong>วันเข้า Onsite:</strong> {tk.onsiteDate}</div>}
+                      </div>
                       
                       {tk.checkedOutItems && tk.checkedOutItems.length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 6 }}>
@@ -1265,7 +1271,7 @@ export default function IpadOnsiteTest() {
                   
                   for (let d = 1; d <= daysInMonth; d++) {
                     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    const dayTickets = assignedTickets.filter(t => t.due === dateStr);
+                    const dayTickets = assignedTickets.filter(t => (t.onsiteDate || t.due) === dateStr);
                     const isToday = new Date().getFullYear() === currentYear && new Date().getMonth() === currentMonth && new Date().getDate() === d;
                     
                     cells.push(
@@ -1429,12 +1435,16 @@ export default function IpadOnsiteTest() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: '9px', color: '#64748b' }}>กำหนดเสร็จ</label>
-                      <input type="date" required value={reqDue} onChange={e => setReqDue(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '3px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>กำหนดวันเข้า Onsite</label>
+                      <input type="date" required value={reqOnsiteDate} onChange={e => setReqOnsiteDate(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '3px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                    <div>
+                      <label style={{ fontSize: '9px', color: '#64748b' }}>กำหนดเสร็จ (Due Date)</label>
+                      <input type="date" required value={reqDue} onChange={e => setReqDue(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '3px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }} />
+                    </div>
                     <div>
                       <label style={{ fontSize: '9px', color: '#64748b' }}>วิธีการ Support</label>
                       <select value={reqSupportMethod} onChange={e => setReqSupportMethod(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
@@ -1443,6 +1453,9 @@ export default function IpadOnsiteTest() {
                         <option value="Telephone">Telephone</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 4 }}>
                     <div>
                       <label style={{ fontSize: '9px', color: '#64748b' }}>ผูกกับตั๋วงาน / หัวข้ออื่นๆ</label>
                       <select value={reqParentTicketId} onChange={e => setReqParentTicketId(e.target.value)} style={{ width: '100%', fontSize: '10px', padding: '4px', borderRadius: 4, border: '1px solid #cbd5e1', fontFamily: 'Prompt, sans-serif' }}>
@@ -2448,6 +2461,8 @@ export default function IpadOnsiteTest() {
                       <FieldRow label="ผู้ติดต่อ" value={matchedTicket.contact?.name} />
                       <FieldRow label="โทร" value={matchedTicket.contact?.phone} />
                       <FieldRow label="Email" value={matchedTicket.contact?.email} />
+                      <FieldRow label="วันเข้า Onsite" value={matchedTicket.onsiteDate ? `📅 ${matchedTicket.onsiteDate}` : 'ไม่ได้ระบุ (ตามดิว)'} />
+                      <FieldRow label="ดิวส่งมอบ" value={matchedTicket.due} />
 
                       <div style={{ borderTop: '1px solid #f1f5f9', margin: '8px 0' }} />
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', marginBottom: 4 }}>👔 Sales/PM</div>

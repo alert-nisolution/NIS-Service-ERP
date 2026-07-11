@@ -67,7 +67,10 @@ function TicketCard({ tk }) {
           </div>
           <span style={{fontSize:11.5,color:'var(--text-muted)'}}>{tk.assignee}</span>
         </div>
-        <span className="ticket-due" style={{color: tk.due==='วันนี้'?'#ef4444':'var(--text-muted)'}}>{tk.due}</span>
+        <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2}}>
+          <span className="ticket-due" style={{color: tk.due==='วันนี้'?'#ef4444':'var(--text-muted)', fontSize:10}}>Due: {tk.due}</span>
+          {tk.onsiteDate && <span style={{color:'var(--primary)', fontWeight:700, fontSize:10}}>Onsite: {tk.onsiteDate}</span>}
+        </div>
       </div>
       {tk.pct > 0 && (
         <div className="progress-bar">
@@ -139,7 +142,10 @@ function AssignCard({ tk, onAssign, onUnassign, staffList }) {
       )}
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4, flexWrap: 'wrap', gap: 6 }}>
-        <span style={{ color: tk.isOverdue ? '#ef4444' : 'var(--text-muted)', fontWeight: tk.isOverdue ? 600 : 400 }}>📅 {tk.due}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ color: tk.isOverdue ? '#ef4444' : 'var(--text-muted)', fontWeight: tk.isOverdue ? 600 : 400 }}>📅 Due: {tk.due}</span>
+          {tk.onsiteDate && <span style={{ color: 'var(--primary)', fontWeight: 700 }}>📅 Onsite: {tk.onsiteDate}</span>}
+        </div>
         
         {tk.assignee === '-' ? (
           <select 
@@ -267,8 +273,10 @@ export default function ServiceBoard() {
     noOnsite: false,
     requireCloseApproval: false,
     due: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+    onsiteDate: new Date(Date.now() + 2*24*60*60*1000).toISOString().split('T')[0],
     note: ''
   });
+  const [assignOnsiteDate, setAssignOnsiteDate] = useState('');
 
   useEffect(() => {
     setPendingRequests(getPendingTickets());
@@ -291,6 +299,7 @@ export default function ServiceBoard() {
       assignee: newTicketForm.assignee,
       accepted: newTicketForm.assignee !== '-' ? false : undefined,
       due: newTicketForm.due,
+      onsiteDate: newTicketForm.onsiteDate || newTicketForm.due,
       pct: 0,
       ticketType: newTicketForm.ticketType,
       skipSignature: !!newTicketForm.skipSignature,
@@ -326,6 +335,7 @@ export default function ServiceBoard() {
       noOnsite: false,
       requireCloseApproval: false,
       due: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+      onsiteDate: new Date(Date.now() + 2*24*60*60*1000).toISOString().split('T')[0],
       note: ''
     });
 
@@ -343,6 +353,7 @@ export default function ServiceBoard() {
       assignee: req.requestedBy,
       accepted: false,
       due: req.due,
+      onsiteDate: req.onsiteDate || req.due,
       pct: 0,
       ticketType: req.ticketType,
       supportMethod: req.supportMethod || 'Onsite',
@@ -899,7 +910,8 @@ export default function ServiceBoard() {
               assignee: selectedStaff,
               accepted: false,
               requireCloseApproval: assignRequireCloseApproval,
-              rejectionReason: ''
+              rejectionReason: '',
+              onsiteDate: assignOnsiteDate || t.due
             };
           }
           return t;
@@ -953,7 +965,11 @@ export default function ServiceBoard() {
     } else {
       setSelectedTicket(ticketId);
       setSelectedStaff(staffName);
-      setAssignRequireCloseApproval(false);
+      
+      const tk = ticketsList.find(t => t.id === ticketId);
+      setAssignOnsiteDate(tk?.onsiteDate || tk?.due || new Date().toISOString().split('T')[0]);
+      setAssignRequireCloseApproval(tk?.requireCloseApproval || false);
+      
       setShowAssignModal(true);
     }
   };
@@ -1034,12 +1050,27 @@ export default function ServiceBoard() {
             <div style={{fontWeight:800,fontSize:18,marginBottom:14,color:'var(--text)'}}>Assign งานให้ Staff (ด่วน)</div>
             <div style={{marginBottom:14}}>
               <label>เลือก Ticket</label>
-              <select value={selectedTicket} onChange={e=>setSelectedTicket(e.target.value)} style={{marginTop:6}}>
+              <select value={selectedTicket} onChange={e=>{
+                const tkId = e.target.value;
+                setSelectedTicket(tkId);
+                const tk = ticketsList.find(t => t.id === tkId);
+                setAssignOnsiteDate(tk?.onsiteDate || tk?.due || new Date().toISOString().split('T')[0]);
+                setAssignRequireCloseApproval(tk?.requireCloseApproval || false);
+              }} style={{marginTop:6}}>
                 <option value="">-- เลือก Ticket --</option>
                 {ticketsList.filter(t=>t.col!=='done').map(t => (
                   <option key={t.id} value={t.id}>{t.id} - {t.title}</option>
                 ))}
               </select>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label>กำหนดวันเข้า Onsite (Onsite Date)</label>
+              <input 
+                type="date" 
+                value={assignOnsiteDate} 
+                onChange={e=>setAssignOnsiteDate(e.target.value)} 
+                style={{marginTop:6}} 
+              />
             </div>
             <div style={{marginBottom:20}}>
               <label>เลือก Staff ผู้รับผิดชอบ</label>
@@ -1268,9 +1299,15 @@ export default function ServiceBoard() {
                   </select>
                 </div>
               </div>
-              <div style={{marginBottom:12}}>
-                <label>กำหนดดิว (Due Date)</label>
-                <input type="date" required value={newTicketForm.due} onChange={e=>setNewTicketForm({...newTicketForm,due:e.target.value})} style={{marginTop:6}} />
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+                <div>
+                  <label>กำหนดดิว (Due Date)</label>
+                  <input type="date" required value={newTicketForm.due} onChange={e=>setNewTicketForm({...newTicketForm,due:e.target.value})} style={{marginTop:6}} />
+                </div>
+                <div>
+                  <label>กำหนดวันเข้า Onsite (Onsite Date)</label>
+                  <input type="date" required value={newTicketForm.onsiteDate} onChange={e=>setNewTicketForm({...newTicketForm,onsiteDate:e.target.value})} style={{marginTop:6}} />
+                </div>
               </div>
               <div style={{marginBottom:16}}>
                 <label>คำสั่งชี้แจง / รายละเอียดงานเพิ่มเติม</label>
@@ -1897,7 +1934,7 @@ export default function ServiceBoard() {
                 for (let d = 1; d <= daysInMonth; d++) {
                   const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                   const dayTickets = ticketsList.filter(t => 
-                    t.due === dateStr &&
+                    (t.onsiteDate || t.due) === dateStr &&
                     (!filterStaff || t.assignee === filterStaff) &&
                     (!showOnlyAssignedCalendar || t.assignee !== '-')
                   );
@@ -2111,7 +2148,10 @@ export default function ServiceBoard() {
                         <td style={{padding:'12px 14px',fontSize:12.5,fontWeight:600}}>
                           📍 {req.location || '-'}
                         </td>
-                        <td style={{padding:'12px 14px',textAlign:'center',fontSize:13,fontWeight:600}}>{req.due}</td>
+                        <td style={{padding:'12px 14px',fontSize:12.5}}>
+                          <div><strong>Due:</strong> {req.due}</div>
+                          {req.onsiteDate && <div style={{color:'var(--primary)',fontWeight:700,marginTop:2}}><strong>Onsite:</strong> {req.onsiteDate}</div>}
+                        </td>
                         <td style={{padding:'12px 14px',fontSize:12.5,color:'var(--text-muted)',maxWidth:240,whiteSpace:'normal',wordBreak:'break-all'}}>{req.detail || '-'}</td>
                         <td style={{padding:'12px 14px',textAlign:'center',fontSize:11.5}}>
                           {req.noOnsite && <div style={{color:'#059669',fontWeight:700}}>• ไม่ต้อง Onsite</div>}

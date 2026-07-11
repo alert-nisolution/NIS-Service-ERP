@@ -99,8 +99,8 @@ const defaultProjects = [
     engineer: { name:'นายกฤษฎ์ พิชิตกุล', nickname:'กฤษฎ์', phone:'081-222-3344' },
     location: 'อาคาร SCG Experience, ถ.พระราม 4, กรุงเทพฯ 10330',
     tickets:[
-      {id:'TK-0091',title:'ติดตั้ง FortiGate 100F + FortiSwitch', status:'In Progress', assignee:'Krit P.', due:'2023-10-30', pct:70, ticketType:'Install'},
-      {id:'TK-0092',title:'Config WiFi Access Points (4 จุด)', status:'Open', assignee:'Nok S.', due:'2023-11-05', accepted:false, pct:0, ticketType:'Install'},
+      {id:'TK-0091',title:'ติดตั้ง FortiGate 100F + FortiSwitch', status:'In Progress', assignee:'Krit P.', due:'2023-10-30', onsiteDate:'2023-10-28', pct:70, ticketType:'Install'},
+      {id:'TK-0092',title:'Config WiFi Access Points (4 จุด)', status:'Open', assignee:'Nok S.', due:'2023-11-05', onsiteDate:'2023-11-03', accepted:false, pct:0, ticketType:'Install'},
       {id:'TK-0093',title:'PM รอบที่ 1 (เดือน 3)', status:'Pending', assignee:'-', due:'2024-01-15', pct:0, ticketType:'PM'},
     ]
   },
@@ -110,8 +110,8 @@ const defaultProjects = [
     engineer: { name:'นางสาวนกยูง สายทอง', nickname:'นก', phone:'085-555-6677' },
     location: 'อาคาร Global Finance Tower, ถ.สาทร, กรุงเทพฯ 10120',
     tickets:[
-      {id:'TK-0088',title:'สำรวจระบบ Network ครั้งที่ 1', status:'Done', assignee:'Nok S.', due:'2023-10-20', pct:100, ticketType:'MA'},
-      {id:'TK-0090',title:'Onsite MA รอบที่ 1 (ต.ค.)', status:'In Progress', assignee:'Nok S.', due:'2023-10-31', pct:40, ticketType:'MA'},
+      {id:'TK-0088',title:'สำรวจระบบ Network ครั้งที่ 1', status:'Done', assignee:'Nok S.', due:'2023-10-20', onsiteDate:'2023-10-18', pct:100, ticketType:'MA'},
+      {id:'TK-0090',title:'Onsite MA รอบที่ 1 (ต.ค.)', status:'In Progress', assignee:'Nok S.', due:'2023-10-31', onsiteDate:'2023-10-29', pct:40, ticketType:'MA'},
       {id:'TK-0094',title:'Onsite MA รอบที่ 2 (พ.ย.)', status:'Pending', assignee:'-', due:'2023-11-30', pct:0, ticketType:'MA'},
     ]
   },
@@ -121,8 +121,8 @@ const defaultProjects = [
     engineer: { name:'นายกฤษฎ์ พิชิตกุล', nickname:'กฤษฎ์', phone:'081-222-3344' },
     location: 'อาคาร PTT Digital, ถ.วิภาวดีรังสิต, กรุงเทพฯ 10900',
     tickets:[
-      {id:'TK-0085',title:'Config Backup (ต.ค.)', status:'Done', assignee:'Krit P.', due:'2023-10-31', pct:100, ticketType:'MA'},
-      {id:'TK-0086',title:'Monthly Report (ต.ค.)', status:'In Progress', assignee:'Krit P.', due:'2023-11-05', accepted:false, pct:60, ticketType:'MA'},
+      {id:'TK-0085',title:'Config Backup (ต.ค.)', status:'Done', assignee:'Krit P.', due:'2023-10-31', onsiteDate:'2023-10-28', pct:100, ticketType:'MA'},
+      {id:'TK-0086',title:'Monthly Report (ต.ค.)', status:'In Progress', assignee:'Krit P.', due:'2023-11-05', onsiteDate:'2023-11-02', accepted:false, pct:60, ticketType:'MA'},
     ]
   },
 ];
